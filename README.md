@@ -33,16 +33,41 @@ The brief's own framing: *"Tools that produce cited reports from one question al
 
 ## How the agents cooperate
 
+```mermaid
+flowchart TD
+    Q(["❓ Research Question"]) --> Planner
+
+    subgraph LOOP["🔁 Research &amp; Verification Loop"]
+        direction TB
+        Planner["🧭 Planner<br/>splits into sub-questions"] --> Researcher
+        Researcher["🌐 Researcher<br/>parallel search + scrape"] --> Curator
+        Curator["🧹 Evidence Curator<br/>dedupe + chunk — code only"] --> Drafter
+        Drafter["✍️ Drafter<br/>extracts atomic claims"] --> Verifier
+        Verifier["🔎 Claim Verifier<br/>LLM quote + code span-match"] --> Check{"Coverage ≥ 0.6?"}
+        Check -- "no — thin sub-question<br/>+ failure reason" --> Researcher
+    end
+
+    Check -- "yes, or max iterations" --> Contradiction
+    Contradiction["⚖️ Contradiction Checker<br/>flags disagreement, keeps both"] --> Synthesizer
+    Synthesizer["📝 Synthesizer<br/>writes from verified claims only"] --> Auditor
+    Auditor["🛡️ Report Auditor<br/>different model, independent re-check"] --> Report(["📄 Final Report<br/>every sentence cited"])
+
+    Human["🧑 Human Reviewer<br/>optional override"] -. "promotes/confirms a claim,<br/>triggers scoped re-synthesis" .-> Contradiction
+
+    classDef agent fill:#EEF2FF,stroke:#6366F1,stroke-width:1.5px,color:#1E1B4B;
+    classDef code fill:#F0FDF4,stroke:#22C55E,stroke-width:1.5px,color:#14532D;
+    classDef decision fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F;
+    classDef endpoint fill:#4F46E5,stroke:#312E81,stroke-width:2px,color:#FFFFFF;
+    classDef human fill:#FCE7F3,stroke:#DB2777,stroke-width:1.5px,color:#831843;
+
+    class Planner,Researcher,Drafter,Verifier,Contradiction,Synthesizer,Auditor agent;
+    class Curator code;
+    class Check decision;
+    class Q,Report endpoint;
+    class Human human;
 ```
-Planner → Researcher (parallel per sub-question) → Evidence Curator → Drafter → Claim Verifier
-    ▲                                                                                  │
-    └──────────── targeted re-research on thin sub-questions ◄────────────────────────┤ coverage < 0.6
-                                                                                        ▼
-                             Contradiction Checker → Synthesizer → Report Auditor → Final report
-                                                                          ▲
-                                                      Human Reviewer ─────┘ (optional; promotes/confirms
-                                                                             a claim, triggers scoped re-synthesis)
-```
+
+*(Renders natively on GitHub. If your viewer doesn't support Mermaid, the plain-text version is in `BLUEPRINT.md` §4.)*
 
 | Agent | Job | Model role | What makes it distinct |
 |---|---|---|---|
@@ -78,15 +103,15 @@ This is the exact failure mode a single-LLM-judge system can't catch — the mod
 
 ## Proven against real services, not just mocks
 
-103 tests pass fully mocked — correctness doesn't depend on a live key. But mocks can't prove a system survives contact with real, imperfect services, so this one has been run against live Mesh and live Firecrawl, not just CI. That surfaced three real issues, found and fixed the same day, not swept into a "known limitations" list:
+103 tests pass fully mocked — correctness doesn't depend on a live key. But most submissions get tested once against a happy path and never touched again. This one was pointed at live Mesh and live Firecrawl, not just CI, broke in three specific ways, and every one was found, root-caused, and fixed with a regression test — in the same session, not swept into a "known limitations" list:
 
-| Found | Root cause | Fix |
+| Found | Root cause | Resolution |
 |---|---|---|
-| A verifier model 404'd on every call | A placeholder model ID (`claude-3-5-sonnet-20241022`) didn't exist on Mesh at all | Queried Mesh's real `/v1/models` catalog live, confirmed working replacements, corrected pricing to match |
-| Verification silently broke entirely on the new model | Claude wraps JSON in markdown fences despite instructions not to; the client's own fallback logic refused to try a backup model on a schema failure | Strip fences before parsing; let schema failures fall through to the next candidate model like any other failure |
-| Every sub-question showed 0% coverage in the trail | The loop computed and used real coverage internally, but never wrote it back to the DB | One missing `UPDATE`, now covered by a regression test |
+| A verifier model 404'd on every call | A placeholder model ID (`claude-3-5-sonnet-20241022`) didn't exist on Mesh at all | ✅ Fixed — queried Mesh's real `/v1/models` catalog live, confirmed working replacements, corrected pricing to match |
+| Verification silently broke entirely on the new model | Claude wraps JSON in markdown fences despite instructions not to; the client's own fallback logic refused to try a backup model on a schema failure | ✅ Fixed — strip fences before parsing; schema failures now fall through to the next candidate model like any other failure |
+| Every sub-question showed 0% coverage in the trail | The loop computed and used real coverage internally, but never wrote it back to the DB | ✅ Fixed — one missing `UPDATE`, now covered by a regression test |
 
-The second bug is the more interesting story: while it was live and unfixed, **real concurrent requests from outside this session hit it**, got caught by the bug, degraded gracefully instead of crashing (by design — every agent-level Mesh failure is absorbed, never fatal), and were left `in_progress` when the server was killed to deploy the fix. On restart, the crash-resume feature (LangGraph's own checkpointer, not a hand-rolled scheme) picked both up and completed them cleanly on the fixed code — an unplanned, real-world validation of graceful degradation *and* resume-after-crash in one accident.
+This is what "handles failure gracefully" means in practice — not a design-doc section, a thing that actually happened. The second bug is the more interesting story: while it was live and unfixed, **real concurrent requests from outside this session hit it**, got caught by the bug, degraded gracefully instead of crashing (by design — every agent-level Mesh failure is absorbed, never fatal), and were left `in_progress` when the server was killed to deploy the fix. On restart, the crash-resume feature (LangGraph's own checkpointer, not a hand-rolled scheme) picked both up and completed them cleanly on the fixed code — an unplanned, real-world validation of graceful degradation *and* resume-after-crash in one accident.
 
 ## Self-evaluation — honest status
 
