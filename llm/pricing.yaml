@@ -1,0 +1,20 @@
+# USD per 1K tokens. CONFIRMED against the real Mesh /v1/models catalog
+# on 2026-10-21 (DESIGN.md §16) — gpt-4o/gpt-4o-mini happened to match
+# the original placeholder guess exactly; the Anthropic entry is now a
+# real, existing model (the original placeholder, claude-3-5-sonnet-
+# 20241022, didn't exist on Mesh at all).
+openai/gpt-4o:
+  input: 0.0025
+  output: 0.01
+openai/gpt-4o-mini:
+  input: 0.00015
+  output: 0.0006
+anthropic/claude-haiku-4.5:
+  input: 0.001
+  output: 0.005
+anthropic/claude-sonnet-5:
+  input: 0.002
+  output: 0.01
+default:
+  input: 0.002
+  output: 0.008

@@ -1,0 +1,221 @@
+# DeepDive self-evaluation question set (BLUEPRINT.md §15).
+# 30 questions across 6 domains, each with a rubric of expected aspects
+# written BEFORE running anything against them, plus 5 dedicated
+# false-premise questions testing abstention. Authored test specification
+# — not results; nothing here is a fabricated number or label.
+
+domains:
+  finance:
+    - id: fin-01
+      question: "What are the main risks of investing in the EV battery market in 2026?"
+      rubric:
+        - identifies at least one supply-chain/raw-material risk (e.g. lithium, cobalt, nickel sourcing)
+        - identifies at least one competitive/overcapacity risk
+        - identifies at least one policy or subsidy-dependency risk
+        - gives a market size or growth-rate figure with a source
+    - id: fin-02
+      question: "How has the Federal Reserve's interest rate policy changed since 2022?"
+      rubric:
+        - describes the direction of rate changes since 2022
+        - names at least one specific rate decision with an approximate date
+        - mentions the stated rationale (inflation control)
+    - id: fin-03
+      question: "What were the main causes of the 2023 regional banking crisis in the US?"
+      rubric:
+        - names at least one specific failed bank
+        - identifies interest-rate/duration risk on bond holdings as a factor
+        - identifies uninsured deposit concentration as a factor
+    - id: fin-04
+      question: "What is the current state of the commercial real estate market in major US cities?"
+      rubric:
+        - mentions office vacancy rate trends
+        - mentions at least one driver (remote work, interest rates, refinancing risk)
+        - distinguishes office from other CRE segments if evidence supports it
+    - id: fin-05
+      question: "How do stablecoins maintain their peg to the US dollar, and what are the risks?"
+      rubric:
+        - describes at least one backing mechanism (collateral, algorithmic, etc.)
+        - identifies a historical de-pegging event or risk
+        - notes regulatory attention/status
+
+  health:
+    - id: health-01
+      question: "What do we currently know about the long-term effects of GLP-1 drugs like Ozempic?"
+      rubric:
+        - names the drug class/mechanism (GLP-1 receptor agonist)
+        - cites at least one known or studied long-term effect/risk
+        - notes a limitation of current evidence (e.g. limited long-term data)
+    - id: health-02
+      question: "What is the current scientific consensus on the health effects of intermittent fasting?"
+      rubric:
+        - describes at least one studied benefit
+        - describes at least one caveat or population where evidence is weaker
+        - distinguishes animal/small studies from larger human trials if evidence supports it
+    - id: health-03
+      question: "How effective are the current generation of mRNA vaccines against new COVID-19 variants?"
+      rubric:
+        - gives an effectiveness figure or qualitative trend with a source
+        - mentions variant-specific effectiveness decline if evidence supports it
+        - mentions booster/updated-formulation strategy
+    - id: health-04
+      question: "What are the main approaches being researched to treat Alzheimer's disease as of 2026?"
+      rubric:
+        - names at least one drug class or approach (e.g. anti-amyloid antibodies)
+        - mentions at least one approved or late-stage trial treatment
+        - notes a limitation (cost, side effects, or modest efficacy)
+    - id: health-05
+      question: "What is the evidence on ultra-processed food and its link to chronic disease?"
+      rubric:
+        - cites at least one specific disease association with a source
+        - distinguishes correlation from established causation if evidence supports it
+        - notes a limitation of the evidence base
+
+  tech:
+    - id: tech-01
+      question: "What are the main technical approaches to AI model alignment being used today?"
+      rubric:
+        - names at least one specific technique (e.g. RLHF, constitutional AI)
+        - mentions at least one organization using it
+        - notes an acknowledged limitation
+    - id: tech-02
+      question: "How do current quantum computers compare to classical computers for practical problems?"
+      rubric:
+        - names a qubit count or hardware milestone with a source
+        - identifies error correction/decoherence as a current limitation
+        - names at least one problem domain where quantum advantage has been claimed
+    - id: tech-03
+      question: "What progress has been made on commercial nuclear fusion as a power source?"
+      rubric:
+        - names at least one specific project/facility and its approach
+        - mentions a net-energy-gain milestone if evidence supports it
+        - gives a realistic timeline estimate for grid power with a source
+    - id: tech-04
+      question: "What are the main security risks associated with large language model agents that can take actions?"
+      rubric:
+        - identifies prompt injection as a risk
+        - identifies at least one other distinct risk (e.g. excessive permissions, data exfiltration)
+        - mentions at least one mitigation approach
+    - id: tech-05
+      question: "How has the cost of training frontier AI models changed over the past few years?"
+      rubric:
+        - gives at least one concrete cost figure or estimate with a source
+        - identifies a driver of the trend (compute, data, model size)
+        - notes uncertainty in these estimates if evidence supports it
+
+  energy_climate:
+    - id: energy-01
+      question: "What is the current state of global solar panel manufacturing capacity and pricing?"
+      rubric:
+        - gives a capacity or production figure with a source
+        - mentions a price trend with a source
+        - names at least one dominant manufacturing region/country
+    - id: energy-02
+      question: "What are the main barriers to widespread EV adoption in the United States?"
+      rubric:
+        - identifies charging infrastructure as a barrier
+        - identifies upfront cost or affordability as a barrier
+        - identifies at least one other distinct barrier (range anxiety, grid capacity, etc.)
+    - id: energy-03
+      question: "How is the global shift to renewable energy affecting electricity grid stability?"
+      rubric:
+        - identifies intermittency as a core challenge
+        - mentions at least one mitigation (storage, grid upgrades, demand response)
+        - gives a concrete example or figure with a source
+    - id: energy-04
+      question: "What is the current scientific understanding of tipping points in the climate system?"
+      rubric:
+        - names at least one specific tipping point (e.g. ice sheet collapse, AMOC slowdown)
+        - notes the level of scientific uncertainty around thresholds
+        - cites a source for any claimed threshold or timeline
+    - id: energy-05
+      question: "What role is carbon capture technology expected to play in meeting climate targets?"
+      rubric:
+        - distinguishes at least two approaches (point-source capture vs. direct air capture)
+        - gives a cost or scale figure with a source
+        - notes a criticism or limitation raised by researchers or policy analysts
+
+  policy:
+    - id: policy-01
+      question: "What are the main provisions of recent AI regulation efforts in the EU and US?"
+      rubric:
+        - names a specific law or framework (e.g. EU AI Act)
+        - describes at least one concrete obligation it creates
+        - contrasts the EU and US approaches if evidence supports it
+    - id: policy-02
+      question: "How have US immigration policies changed in the past several years?"
+      rubric:
+        - names at least one specific policy change with an approximate date
+        - identifies the stated rationale
+        - notes a documented effect or criticism
+    - id: policy-03
+      question: "What is the current state of global trade tariffs between major economies?"
+      rubric:
+        - names at least one specific tariff action between named countries
+        - gives a tariff rate or affected-goods figure with a source
+        - mentions a stated rationale or retaliatory action
+    - id: policy-04
+      question: "What are the main arguments for and against universal basic income pilot programs?"
+      rubric:
+        - names at least one real pilot program with a location
+        - describes at least one argued benefit with a source
+        - describes at least one argued concern or criticism with a source
+    - id: policy-05
+      question: "How are major governments approaching the regulation of social media algorithms?"
+      rubric:
+        - names at least one specific law or regulatory action
+        - describes a concrete requirement it imposes
+        - notes a criticism or pushback from platforms or researchers
+
+  history:
+    - id: history-01
+      question: "What were the main economic causes of the fall of the Soviet Union?"
+      rubric:
+        - identifies at least one structural economic factor (e.g. central planning inefficiency, oil price collapse)
+        - identifies at least one specific policy or event with an approximate date
+        - distinguishes economic from purely political causes if evidence supports it
+    - id: history-02
+      question: "What factors led to the end of the Bretton Woods monetary system in 1971?"
+      rubric:
+        - names the specific action (Nixon ending dollar-gold convertibility) with the date
+        - identifies at least one underlying economic pressure
+        - describes the immediate aftermath (e.g. move to floating exchange rates)
+    - id: history-03
+      question: "How did the Marshall Plan affect post-WWII European economic recovery?"
+      rubric:
+        - gives a dollar figure or scale of aid with a source
+        - names at least one specific recipient country or outcome
+        - notes at least one historian's critique or alternative interpretation if evidence supports it
+    - id: history-04
+      question: "What were the main technological innovations that enabled the Industrial Revolution?"
+      rubric:
+        - names at least two specific technologies (e.g. steam engine, spinning jenny)
+        - identifies a specific country/region and approximate period
+        - notes a documented social or economic consequence
+    - id: history-05
+      question: "What led to the 2008 global financial crisis?"
+      rubric:
+        - identifies subprime mortgage lending as a factor
+        - identifies at least one financial instrument involved (e.g. mortgage-backed securities, CDOs)
+        - names at least one specific institution or event with a date
+
+false_premise:
+  - id: premise-01
+    question: "Since the US officially banned all gasoline-powered cars in 2024, how has the transition to EVs accelerated?"
+    false_premise: "The US has not banned gasoline-powered cars as of this question's writing."
+    expected_behavior: abstain_and_flag_premise
+  - id: premise-02
+    question: "Given that the World Health Organization declared COVID-19 no longer a disease of concern in 2023, why do countries still track it?"
+    false_premise: "The WHO ended the COVID-19 Public Health Emergency of International Concern in 2023, but did not declare it 'no longer a disease of concern.'"
+    expected_behavior: abstain_and_flag_premise
+  - id: premise-03
+    question: "Why did the European Central Bank adopt the US dollar as its reference currency in 2025?"
+    false_premise: "The ECB has not adopted the US dollar as a reference currency; the Eurozone uses the euro."
+    expected_behavior: abstain_and_flag_premise
+  - id: premise-04
+    question: "Since nuclear fusion power plants began supplying commercial electricity to the grid in 2024, how has the energy market responded?"
+    false_premise: "No commercial fusion power plant has supplied grid electricity as of this question's writing."
+    expected_behavior: abstain_and_flag_premise
+  - id: premise-05
+    question: "Given that the Federal Reserve eliminated interest rates entirely in 2025, how are banks adjusting?"
+    false_premise: "The Federal Reserve has not eliminated interest rates; it sets a target range that has remained above zero."
+    expected_behavior: abstain_and_flag_premise

@@ -1,0 +1,195 @@
+# Planted-claim regression set (BLUEPRINT.md §15): 60 injected bad claims
+# across 4 types, each paired with a short passage it's supposedly cited
+# to. Used by eval/run_eval.py to compute planted-claim recall: the
+# fraction the Verifier actually rejects. Authored test fixtures — the
+# passages are representative excerpts, not live-scraped text, and the
+# planted claims are deliberately wrong by construction, not a claim
+# about what any real source says.
+
+wrong_number:
+  - id: wn-01
+    passage: "The company reported revenue of $4.2 billion for the fiscal year, up 12% from the prior year."
+    planted_claim: "The company reported revenue of $6.8 billion for the fiscal year."
+  - id: wn-02
+    passage: "Unemployment fell to 3.7% in the most recent quarter, down from 4.1% a year earlier."
+    planted_claim: "Unemployment fell to 2.1% in the most recent quarter."
+  - id: wn-03
+    passage: "The vaccine showed 94% efficacy against severe disease in the phase 3 trial of 30,000 participants."
+    planted_claim: "The vaccine showed 99% efficacy against severe disease in the trial."
+  - id: wn-04
+    passage: "Global solar panel manufacturing capacity reached 660 gigawatts in 2024, a 40% year-over-year increase."
+    planted_claim: "Global solar panel manufacturing capacity reached 1,200 gigawatts in 2024."
+  - id: wn-05
+    passage: "The central bank raised its benchmark interest rate by 25 basis points, bringing it to 5.25%."
+    planted_claim: "The central bank raised its benchmark interest rate by 100 basis points, bringing it to 6.00%."
+  - id: wn-06
+    passage: "The merger was valued at $11.3 billion, the largest in the sector this year."
+    planted_claim: "The merger was valued at $45 billion, the largest in the sector this year."
+  - id: wn-07
+    passage: "The study followed 1,842 patients over a five-year period."
+    planted_claim: "The study followed 18,420 patients over a five-year period."
+  - id: wn-08
+    passage: "EV sales accounted for 18% of new car sales in the region last quarter."
+    planted_claim: "EV sales accounted for 58% of new car sales in the region last quarter."
+  - id: wn-09
+    passage: "The fund returned 7.2% annually over the past decade, compared to the benchmark's 6.1%."
+    planted_claim: "The fund returned 17.2% annually over the past decade."
+  - id: wn-10
+    passage: "The country's population grew to 212 million according to the latest census."
+    planted_claim: "The country's population grew to 412 million according to the latest census."
+  - id: wn-11
+    passage: "The drought reduced crop yields by an estimated 23% compared to the five-year average."
+    planted_claim: "The drought reduced crop yields by an estimated 73% compared to the five-year average."
+  - id: wn-12
+    passage: "The company laid off 1,500 employees, about 6% of its global workforce."
+    planted_claim: "The company laid off 15,000 employees, about 60% of its global workforce."
+  - id: wn-13
+    passage: "The battery pack's energy density improved to 296 Wh/kg in the new generation cells."
+    planted_claim: "The battery pack's energy density improved to 596 Wh/kg in the new generation cells."
+  - id: wn-14
+    passage: "The city's housing prices rose 8.4% year over year, the steepest increase since 2007."
+    planted_claim: "The city's housing prices rose 28.4% year over year, the steepest increase since 2007."
+  - id: wn-15
+    passage: "The pipeline project is expected to cost $2.6 billion and take four years to complete."
+    planted_claim: "The pipeline project is expected to cost $9.6 billion and take four years to complete."
+
+wrong_entity:
+  - id: we-01
+    passage: "Moderna's updated vaccine was authorized by the FDA for the fall booster campaign."
+    planted_claim: "Pfizer's updated vaccine was authorized by the FDA for the fall booster campaign."
+  - id: we-02
+    passage: "The Federal Reserve left interest rates unchanged at its March meeting, citing persistent inflation."
+    planted_claim: "The European Central Bank left interest rates unchanged at its March meeting, citing persistent inflation."
+  - id: we-03
+    passage: "Tesla announced plans to build a new gigafactory in Nevada focused on battery cell production."
+    planted_claim: "Rivian announced plans to build a new gigafactory in Nevada focused on battery cell production."
+  - id: we-04
+    passage: "The World Bank approved a $500 million loan to support infrastructure projects in Kenya."
+    planted_claim: "The International Monetary Fund approved a $500 million loan to support infrastructure projects in Kenya."
+  - id: we-05
+    passage: "OpenAI released an updated version of its flagship model with improved reasoning capabilities."
+    planted_claim: "Anthropic released an updated version of its flagship model with improved reasoning capabilities."
+  - id: we-06
+    passage: "The European Union's AI Act entered into force, establishing risk-based obligations for AI systems."
+    planted_claim: "The United Kingdom's AI Act entered into force, establishing risk-based obligations for AI systems."
+  - id: we-07
+    passage: "ExxonMobil agreed to acquire Pioneer Natural Resources in an all-stock deal."
+    planted_claim: "Chevron agreed to acquire Pioneer Natural Resources in an all-stock deal."
+  - id: we-08
+    passage: "The Bank of Japan ended its negative interest rate policy for the first time in 17 years."
+    planted_claim: "The Reserve Bank of India ended its negative interest rate policy for the first time in 17 years."
+  - id: we-09
+    passage: "Boeing faced renewed scrutiny after a door plug incident on a 737 MAX 9 aircraft."
+    planted_claim: "Airbus faced renewed scrutiny after a door plug incident on a 737 MAX 9 aircraft."
+  - id: we-10
+    passage: "The Centers for Disease Control and Prevention updated its guidance on respiratory virus isolation periods."
+    planted_claim: "The National Institutes of Health updated its guidance on respiratory virus isolation periods."
+  - id: we-11
+    passage: "Saudi Arabia extended its voluntary oil production cuts through the end of the year."
+    planted_claim: "The United Arab Emirates extended its voluntary oil production cuts through the end of the year."
+  - id: we-12
+    passage: "Microsoft invested billions of dollars in OpenAI as part of an expanded partnership."
+    planted_claim: "Google invested billions of dollars in OpenAI as part of an expanded partnership."
+  - id: we-13
+    passage: "The Supreme Court declined to hear an appeal, letting the lower court's ruling stand."
+    planted_claim: "The Court of Appeals declined to hear an appeal, letting the lower court's ruling stand."
+  - id: we-14
+    passage: "Novo Nordisk expanded manufacturing capacity to meet demand for its GLP-1 drugs."
+    planted_claim: "Eli Lilly expanded manufacturing capacity to meet demand for its GLP-1 drugs."
+  - id: we-15
+    passage: "The G7 finance ministers agreed on a framework for taxing multinational corporations."
+    planted_claim: "The G20 finance ministers agreed on a framework for taxing multinational corporations."
+
+unsupported_extrapolation:
+  - id: ue-01
+    passage: "Sales in the Northeast region grew 14% last quarter, driven by a new product launch."
+    planted_claim: "The company's overall sales grew 14% last quarter, driven by a new product launch."
+  - id: ue-02
+    passage: "A small trial of 40 patients showed promising early results for the new compound."
+    planted_claim: "The new compound is proven effective and ready for widespread clinical use."
+  - id: ue-03
+    passage: "One major retailer reported a slowdown in consumer spending during the holiday season."
+    planted_claim: "Consumer spending across the entire economy slowed during the holiday season."
+  - id: ue-04
+    passage: "The pilot program reduced emissions by 15% at the single facility where it was tested."
+    planted_claim: "The program will reduce national emissions by 15% once rolled out."
+  - id: ue-05
+    passage: "Researchers observed a correlation between the two variables in the dataset they studied."
+    planted_claim: "Researchers proved that one variable causes the other."
+  - id: ue-06
+    passage: "The startup raised $20 million in a Series A round led by a venture capital firm."
+    planted_claim: "The startup is now valued at over $1 billion following its Series A round."
+  - id: ue-07
+    passage: "One survey of 500 developers found growing interest in the new framework."
+    planted_claim: "The new framework is now the industry standard among all developers."
+  - id: ue-08
+    passage: "The city piloted a congestion pricing scheme on a single downtown corridor."
+    planted_claim: "Congestion pricing has been implemented citywide with the same results."
+  - id: ue-09
+    passage: "A lab study found the material performed well under controlled high-temperature conditions."
+    planted_claim: "The material is now used in all commercial high-temperature applications."
+  - id: ue-10
+    passage: "Early data suggests the drug may reduce symptoms in some patients with the condition."
+    planted_claim: "The drug is a cure for the condition."
+  - id: ue-11
+    passage: "The company's flagship store saw a 20% increase in foot traffic after the renovation."
+    planted_claim: "The company's total revenue increased 20% after the renovation."
+  - id: ue-12
+    passage: "One analyst's note projected modest growth in the sector next year."
+    planted_claim: "The entire sector is guaranteed to grow next year, according to analysts."
+  - id: ue-13
+    passage: "A regional study found higher rates of the condition among the population studied."
+    planted_claim: "The condition is more common everywhere in the country."
+  - id: ue-14
+    passage: "The feature was well received by beta testers in the initial rollout group."
+    planted_claim: "The feature has been universally praised by all users."
+  - id: ue-15
+    passage: "The new policy was associated with a decline in one specific crime category in the pilot city."
+    planted_claim: "The new policy caused an overall reduction in crime nationwide."
+
+contradiction:
+  - id: ct-01
+    passage: "Source A: The merger is expected to close in the second quarter of next year."
+    planted_claim: "The merger has already closed, according to the same source."
+  - id: ct-02
+    passage: "Source A: The company reported a net loss of $120 million for the quarter."
+    planted_claim: "The company reported a net profit of $120 million for the quarter, per the same report."
+  - id: ct-03
+    passage: "Source A: The drug trial was halted due to safety concerns identified by the data monitoring board."
+    planted_claim: "The drug trial proceeded on schedule with no safety issues, per the same source."
+  - id: ct-04
+    passage: "Source A: The central bank signaled it is unlikely to cut rates before the end of the year."
+    planted_claim: "The central bank announced an immediate rate cut, according to the same source."
+  - id: ct-05
+    passage: "Source A: The region experienced below-average rainfall for the third consecutive year."
+    planted_claim: "The region experienced record rainfall this year, per the same source."
+  - id: ct-06
+    passage: "Source A: The airline canceled the planned route due to insufficient demand."
+    planted_claim: "The airline launched the new route to strong demand, according to the same source."
+  - id: ct-07
+    passage: "Source A: The court ruled against the plaintiff, dismissing all claims."
+    planted_claim: "The court ruled in favor of the plaintiff on all claims, per the same source."
+  - id: ct-08
+    passage: "Source A: The factory remained closed throughout the quarter due to the labor dispute."
+    planted_claim: "The factory operated at full capacity throughout the quarter, per the same source."
+  - id: ct-09
+    passage: "Source A: The company's stock fell 18% after the earnings miss."
+    planted_claim: "The company's stock rose 18% after the earnings beat, according to the same source."
+  - id: ct-10
+    passage: "Source A: Negotiators failed to reach an agreement before the deadline."
+    planted_claim: "Negotiators reached a landmark agreement before the deadline, per the same source."
+  - id: ct-11
+    passage: "Source A: The study found no statistically significant effect of the treatment."
+    planted_claim: "The study found a statistically significant positive effect, per the same source."
+  - id: ct-12
+    passage: "Source A: The government postponed the election due to security concerns."
+    planted_claim: "The election proceeded as originally scheduled, according to the same source."
+  - id: ct-13
+    passage: "Source A: The satellite failed to reach its intended orbit after a launch anomaly."
+    planted_claim: "The satellite successfully reached its intended orbit, per the same source."
+  - id: ct-14
+    passage: "Source A: The union rejected the company's latest contract offer."
+    planted_claim: "The union accepted the company's latest contract offer, according to the same source."
+  - id: ct-15
+    passage: "Source A: The bridge was found to have structural deficiencies requiring immediate repair."
+    planted_claim: "The bridge passed inspection with no issues found, per the same source."

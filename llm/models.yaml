@@ -1,0 +1,39 @@
+# Model IDs — CONFIRMED against the real Mesh /v1/models catalog on
+# 2026-10-21 (fetched live with a working MESH_API_KEY; see DESIGN.md
+# §16). The original `anthropic/claude-3-5-sonnet-20241022` placeholder
+# did not exist on Mesh at all — it 404'd on every call during the first
+# live run and silently fell back to openai/gpt-4o each time, wasting
+# ~7s of retries per call. Mesh's Anthropic models use its own current
+# naming (claude-haiku-4.5, claude-sonnet-5, ...), not Anthropic's own
+# API's model ID scheme.
+#
+# Rule (DESIGN.md §4): verifier and auditor/grader MUST resolve to different
+# underlying models, so one model never grades its own reasoning style.
+# verifier is the highest-volume role by far (297/422 calls in the first
+# live run) — routed to a cheaper-but-capable model for that reason.
+
+roles:
+  planner:
+    model: openai/gpt-4o
+    fallback: openai/gpt-4o-mini
+  drafter:
+    model: openai/gpt-4o-mini
+    fallback: openai/gpt-4o
+  verifier:
+    model: anthropic/claude-haiku-4.5
+    fallback: openai/gpt-4o
+  auditor:
+    model: openai/gpt-4o
+    fallback: anthropic/claude-haiku-4.5
+  synth:
+    model: openai/gpt-4o
+    fallback: openai/gpt-4o-mini
+  grader:
+    model: anthropic/claude-sonnet-5
+    fallback: openai/gpt-4o
+  coverage:
+    model: openai/gpt-4o-mini
+    fallback: openai/gpt-4o
+  cheap:
+    model: openai/gpt-4o-mini
+    fallback: openai/gpt-4o-mini
