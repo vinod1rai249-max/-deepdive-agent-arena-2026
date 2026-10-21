@@ -79,6 +79,17 @@ flowchart TD
 | **Report Auditor** | Independently re-checks every synthesized sentence | `auditor` | **Always a different model than `verifier`** — by rule, not convention |
 | **Human Reviewer** | Optional: promotes or confirms a rejected claim | *none — a person* | Never mutates the AI's original verdict; additive only |
 
+## Key design decisions
+
+Full rationale for each (alternatives considered, what was rejected, and why) is in `DESIGN.md` — this is the short version:
+
+1. **Verification is two independent layers, not one.** An LLM quotes the exact span it's relying on; code (`rapidfuzz` span-match + numeric check) independently confirms that span is real and the numbers weren't altered. A model can lie about entailment; it's much harder to fabricate a verbatim quote that also survives a fuzzy-match against text it never saw. `DESIGN.md` §1.
+2. **Citations are a database foreign-key chain, never LLM-authored text.** The renderer never accepts a URL from a model — it resolves `Claim.passage_id → Passage.source_id → Source.url` in code. There's no field for a hallucinated or injected citation to land in. `DESIGN.md` §3.
+3. **The Verifier and Report Auditor are always different underlying models, by rule.** Using the same model to draft, verify, and audit its own writing lets errors slip past a check written in that model's own "style" of reasoning — a second model is cheap insurance against that correlated blind spot. `DESIGN.md` §4.
+4. **A rejected claim gets a re-attribution attempt before being discarded**, because "true claim, wrong footnote" and "false claim" are different failure modes — conflating them understates real groundedness and overstates the system's error rate. `DESIGN.md` §5.
+5. **LangGraph over a custom orchestrator, CrewAI, or AutoGen**, specifically because the verification loop-back (`coverage < τ → re-research`) needed to be a first-class, inspectable graph edge, not a hand-rolled retry wrapper — and because its checkpointer gives crash-resume almost for free. `DESIGN.md` §2, §14.
+6. **The one human-in-the-loop point kept is additive, not a gate.** A human can promote a rejected claim, but it never mutates the original AI verdict (a separate `HumanReview` row) and never bypasses the Auditor — a promoted claim still has to survive the same independent check every other sentence does. Every other candidate HITL point considered (pre-publish approval, premise-flag confirmation) was deliberately rejected as adding process without adding information the trail doesn't already surface. `DESIGN.md` §15.
+
 ## Bonus coverage (brief's "Highlighted Bonus" items)
 
 | Item | Status |
@@ -121,9 +132,22 @@ The same discipline was turned on the docs themselves: a later pass asked not "d
 
 Full rationale for each: `DESIGN.md` §17. Also worth naming as a USP in its own right: four of the sequential agent-loops that call Mesh (Verifier, Drafter, Contradiction Checker, loop-control's coverage pass) run their LLM calls concurrently via `asyncio.gather`, not one-at-a-time — real network throttling is enforced once, centrally, by `MeshClient`'s own internal semaphore, so the loop fans out without overrunning Mesh's rate limits. This is what closed the "query is taking time to respond" latency gap found during manual UI testing.
 
-## Self-evaluation — honest status
+## Self-evaluation — test set and results
 
-The brief: *"a team that genuinely built this almost always measured whether it works."* Here's the honest version: the **measurement infrastructure is fully built and unit-tested** — 30 authored questions across 6 domains with written rubrics, 60 planted bad claims across 4 failure types, 3 prompt-injection fixtures, an independent `grader` model role (distinct from `verifier`/`auditor`) for judge-human agreement, and a baseline comparator that's actually scored by the same standard as DeepDive, not just generated. **The headline numbers are not yet produced** — that needs a real `MESH_API_KEY` run plus human-labeled `gold_labels.csv` (owned by a person, not fabricated by an LLM). `EVAL.md` says exactly this, with nothing papered over. Real, live run data already exists today (see above) — the gap is specifically the structured eval sweep across all 30+5 questions.
+The brief: *"a team that genuinely built this almost always measured whether it works."* Full detail (metric definitions, how to reproduce, a failure gallery) lives in `EVAL.md`; this is the short, honest version.
+
+**The test set** (`eval/`, every file version-controlled, nothing generated at eval time):
+
+| File | Contents |
+|---|---|
+| `eval/questions.yaml` | 30 authored research questions across 6 domains (finance, health, tech, energy/climate, policy, history), each with a rubric written *before* any run — plus 5 dedicated false-premise questions to score abstention |
+| `eval/planted_claims.yaml` | 60 deliberately bad claims planted across 4 failure types (15 each: wrong number, wrong entity, unsupported extrapolation, contradiction), each paired with the real passage it should fail against |
+| `eval/injection_pages/` | 3 HTML fixtures with embedded prompt-injection attempts, targeting the Researcher/Drafter, the Synthesizer, and the Auditor specifically |
+| `eval/gold_labels.csv` | Schema for human-labeled claim↔passage ground truth, collected via `eval/label.py` from real run output — intentionally owned by a person, never auto-filled by an LLM |
+
+**The metrics** this test set drives — sentence support rate, citation precision, planted-claim recall, false-rejection rate, judge–human agreement (grader vs. gold labels, accuracy + Cohen's κ), rubric coverage, abstention accuracy, injection resistance, cost/latency — are all implemented and unit-tested against constructed data in `eval/run_eval.py` and `tests/unit/test_eval_metrics.py`/`test_eval_grader.py`, independent of whether a live sweep has been run.
+
+**The numbers: not yet produced, stated plainly rather than filled in with something invented.** Running the actual sweep (`python eval/run_eval.py`) spends real Mesh credits and needs `gold_labels.csv` populated first (`python eval/label.py <run_id>`, after at least one real `cli.py run`) — neither has been done in this environment. `eval/results/` is empty today; nothing in this repo fabricates a result to fill it. What *does* exist from real runs: the live-bug-fix evidence above, and the single worked example of a rejected claim with full reasoning (see "Point to a rejected claim"), which is real output, just not a statistically aggregated score.
 
 ## Project layout
 

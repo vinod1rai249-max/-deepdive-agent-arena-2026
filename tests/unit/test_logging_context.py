@@ -1,4 +1,4 @@
-"""Found missing during a self-review (DESIGN.md §16): `core/logging.py`
+"""Found missing during a self-review (DESIGN.md §17): `core/logging.py`
 had a `bind()` mechanism for attaching run_id/node context to every log
 line, but nothing in agents/ or app/ ever called it — every graph node
 now binds its own context fresh (app/graph.py), so this verifies the

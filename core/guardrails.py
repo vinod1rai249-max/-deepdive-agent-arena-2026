@@ -1,7 +1,7 @@
 """Guardrails (BLUEPRINT.md §8, §12): defenses applied at agent
 boundaries, independent of what any single prompt asks for on its own.
 
-Found missing during a self-review (DESIGN.md §16): BLUEPRINT.md §8
+Found missing during a self-review (DESIGN.md §17): BLUEPRINT.md §8
 always stated that fetched web text must be wrapped in a delimited
 `<untrusted_source>` block before reaching a prompt, but no code ever
 actually did it — the three `eval/injection_pages/` fixtures existed to

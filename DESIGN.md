@@ -97,6 +97,19 @@ Several candidate HITL points were considered anyway, since a review pass surfac
 
 Every run still completes fully autonomously with zero human involvement — this is additive, not a dependency.
 
+## 16. What the first live run against real Mesh + Firecrawl actually broke
+
+Everything up to this point had passed fully mocked tests. Pointing the system at a real `MESH_API_KEY` and `FIRECRAWL_API_KEY` for the first time surfaced four real issues mocks couldn't — the reason this section exists at all, and the reason ~12 code comments elsewhere in this codebase cite it:
+
+1. **A placeholder verifier model ID didn't exist on Mesh.** `claude-3-5-sonnet-20241022` 404'd on every call. Fixed by querying Mesh's real `/v1/models` catalog live and swapping in confirmed-working IDs (`llm/models.yaml`), with `llm/pricing.yaml` corrected to match.
+2. **Claude (via Mesh) wraps JSON in markdown fences despite `response_format` and explicit instructions not to.** `llm/client.py` now strips fences before every parse attempt (cache-hit, main parse, repair-retry), and caches the *cleaned* text, not the raw fenced text.
+3. **The more serious bug: a schema failure couldn't fall back to another model.** `except LLMOutputError: raise` meant the fence bug above was fatal instead of recoverable — removing that special case so `LLMOutputError` falls through like any other exception is what actually made the fence fix effective, not the fence fix alone.
+4. **`SubQuestion.coverage` was computed and used correctly in-memory but never written back to the DB.** Every run showed 0% coverage in the trail regardless of real progress. Fixed with one missing `UPDATE` (`Repo.update_subquestion_coverage`, called from `loop_control.decide()`).
+
+A fifth change from the same testing round, not a bug fix but a real latency improvement found while manually exercising the UI: the Verifier, Drafter, Contradiction Checker, and loop-control's coverage pass were each looping over sub-questions **sequentially** when nothing about them was actually dependent — switched to `asyncio.gather`, relying on `MeshClient`'s own internal semaphore for real throttling rather than an ad-hoc one per call site.
+
+An unplanned bonus: while bug 3 was live and unfixed, real concurrent traffic from outside this session hit it, degraded gracefully instead of crashing (every agent-level Mesh failure is absorbed by design), and was left `in_progress` when the server was killed to deploy the fix. On restart, the checkpointer-based resume (§14) picked both runs up and completed them cleanly — an accidental, real-world validation of graceful degradation *and* resume-after-crash at the same time.
+
 ## 17. Four gaps found by auditing the spec against the code, not just reading the spec
 
 A later self-review asked a sharper question than usual: not "does the blueprint describe this correctly," but "does the *code* actually do what the blueprint says it does." Grepping for the things §8 and §6 promised turned up four real gaps — not fabrications in the docs, just principles that were written down and never wired in:

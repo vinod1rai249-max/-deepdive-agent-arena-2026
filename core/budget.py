@@ -10,7 +10,7 @@ simpler to test and matches how it's actually called from
 `agents/loop_control.py`.
 
 (An earlier `RunBudget` dataclass existed here, unused anywhere in the
-codebase — found during a self-review, DESIGN.md §16. Replaced with
+codebase — found during a self-review, DESIGN.md §17. Replaced with
 this, which is now actually wired into the loop and has a real
 `stop_reason="budget"` test covering it.)
 """

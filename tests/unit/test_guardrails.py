@@ -1,6 +1,6 @@
 """BLUEPRINT.md §8: externally-sourced text must be wrapped in a
 delimited `<untrusted_source>` block before reaching a prompt. Found
-missing during a self-review (DESIGN.md §16) and fixed here."""
+missing during a self-review (DESIGN.md §17) and fixed here."""
 
 from __future__ import annotations
 
