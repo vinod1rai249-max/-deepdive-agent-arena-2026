@@ -4,7 +4,7 @@
 
 `✅ 100% Mesh API` — every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. &nbsp;·&nbsp; `✅ 103 tests, 0 live credits to verify correctness` &nbsp;·&nbsp; `✅ Real runs against live Mesh + Firecrawl` — not just mocks
 
-Built for **Agent Arena 2026, Track 01**. Full spec: [`BLUEPRINT.md`](BLUEPRINT.md) · Design rationale: [`DESIGN.md`](DESIGN.md) · Self-eval detail: [`EVAL.md`](EVAL.md)
+Built for **Agent Arena 2026, Track 01**. 🎥 [**Demo video**](https://www.youtube.com/watch?v=yvRKvqpDM24) · Full spec: [`BLUEPRINT.md`](BLUEPRINT.md) · Design rationale: [`DESIGN.md`](DESIGN.md) · Self-eval detail: [`EVAL.md`](EVAL.md)
 
 ---
 
@@ -252,6 +252,6 @@ This README is the pitch — skim it, verify the claims, move on. `BLUEPRINT.md`
 
 Stated plainly rather than left for a judge to notice and wonder about:
 
-- **No demo video, no deployed URL.** This runs locally against real Mesh/Firecrawl keys (see Quickstart) — there's no hosted instance to link to, and no recorded walkthrough was produced. The real-run evidence above (the rejected-claim example, the three live bugs and their fixes) is first-hand from this session, not from a staged recording.
+- **No deployed URL.** This runs locally against real Mesh/Firecrawl keys (see Quickstart) — there's no hosted instance to link to. A [demo video](https://www.youtube.com/watch?v=yvRKvqpDM24) is linked at the top instead; the real-run evidence in this README (the rejected-claim example, the three live bugs and their fixes) is first-hand from this session, not staged for the recording.
 - **`samples/` (`EVAL.md`'s planned location for saved eval transcripts) does not exist yet.** The eval *infrastructure* is built and unit-tested (see Self-evaluation above); the actual sweep that would populate it needs a real Mesh key and human-labeled `gold_labels.csv`, which is why `EVAL.md` states the headline numbers as pending instead of fabricating them.
 - **No LICENSE file.** Not an oversight to leave unmentioned — left out deliberately since it has no bearing on hackathon judging and adding one casually (without the user deciding the actual terms) would be a bigger claim than this README is willing to make on someone else's behalf.
