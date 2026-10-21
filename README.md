@@ -6,8 +6,6 @@
 
 Built for **Agent Arena 2026, Track 01**. Full spec: [`BLUEPRINT.md`](BLUEPRINT.md) · Design rationale: [`DESIGN.md`](DESIGN.md) · Self-eval detail: [`EVAL.md`](EVAL.md)
 
-> *(Screenshot slot: drop a capture of the Streamlit Report tab here — `docs/report-tab.png` — showing the grouped, cited report in the UI described below.)*
-
 ---
 
 ## TL;DR
