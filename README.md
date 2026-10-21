@@ -127,6 +127,79 @@ Full rationale for each: `DESIGN.md` §17. Also worth naming as a USP in its own
 
 The brief: *"a team that genuinely built this almost always measured whether it works."* Here's the honest version: the **measurement infrastructure is fully built and unit-tested** — 30 authored questions across 6 domains with written rubrics, 60 planted bad claims across 4 failure types, 3 prompt-injection fixtures, an independent `grader` model role (distinct from `verifier`/`auditor`) for judge-human agreement, and a baseline comparator that's actually scored by the same standard as DeepDive, not just generated. **The headline numbers are not yet produced** — that needs a real `MESH_API_KEY` run plus human-labeled `gold_labels.csv` (owned by a person, not fabricated by an LLM). `EVAL.md` says exactly this, with nothing papered over. Real, live run data already exists today (see above) — the gap is specifically the structured eval sweep across all 30+5 questions.
 
+## Project layout
+
+```
+deepdive/
+├── app/                     # FastAPI + LangGraph wiring — run lifecycle
+│   ├── api.py                 # Routes: POST /research, GET /research/{id}, override, resynthesize
+│   ├── deps.py                 # Deps bundle: mesh client, search provider, repo, settings
+│   ├── graph.py                 # Builds the 9-node StateGraph + the verify loop-back edge
+│   ├── runner.py                 # execute_run / resume_run / resynthesize_run — shared by CLI + API
+│   └── state.py                   # Typed RunState — the checkpointed graph state
+├── agents/                  # One module per pipeline agent
+│   ├── planner.py              # Splits question into sub-questions; flags false premises
+│   ├── researcher.py            # Generates search queries, fetches web content (Firecrawl)
+│   ├── curator.py                 # Dedupes sources, chunks into passages — zero LLM calls
+│   ├── drafter.py                   # Extracts atomic, index-cited claims from passages
+│   ├── verifier.py                    # LLM quotes a span; code independently verifies it
+│   ├── loop_control.py                  # Decides coverage_met / max_iter / deadline / budget / no_new_evidence
+│   ├── coverage.py                        # Coverage-score math for a sub-question
+│   ├── contradiction.py                     # Flags disagreeing verified claims, never resolves
+│   ├── synthesizer.py                         # Writes report sentences from verified claims only
+│   ├── auditor.py                               # Different model re-checks every synthesized sentence
+│   └── schemas.py                                 # Pydantic I/O schemas for every agent's LLM call
+├── llm/                     # The ONLY layer allowed to import `openai` (enforced by a test)
+│   ├── client.py               # MeshClient — model fallback, retry, cache, cost tracking
+│   ├── cache.py                 # Disk cache for LLM responses, keyed by prompt+model hash
+│   ├── circuit_breaker.py        # Trips after repeated failures on a model, forces fallback
+│   ├── models.yaml                # Maps agent roles (planner/verifier/auditor/...) to Mesh model IDs
+│   └── pricing.yaml                # Per-model $/1K-token rates for cost estimation
+├── retrieval/                # Web search + fetch
+│   ├── base.py                  # SearchProvider interface
+│   ├── firecrawl_client.py       # Real search + scrape via Firecrawl
+│   ├── null_provider.py           # No-op provider when no Firecrawl key is set
+│   ├── fetch_safe.py               # SSRF guard — blocks private/internal IPs before any fetch
+│   ├── dedup.py                      # Near-duplicate source detection
+│   ├── dates.py                        # Recency parsing for source-quality weighting
+│   └── tiers.py                         # Rule-based source-quality tiers
+├── verify/                   # Pure code-side verification — no LLM calls
+│   ├── span_match.py            # Fuzzy-matches a quoted span against the real passage text
+│   ├── numeric_check.py          # Confirms numbers in a claim match the cited passage
+│   ├── reattribute.py             # Tries re-citing a claim against a different passage on failure
+│   └── confidence.py               # Tier + recency + corroboration -> confidence score
+├── store/                    # Persistence
+│   ├── models.py                # SQLAlchemy ORM models (Run, SubQuestion, Source, Passage, Claim, Verdict, ...)
+│   └── repo.py                    # All DB reads/writes — the only module touching the session directly
+├── core/                     # Cross-cutting concerns
+│   ├── config.py                # Settings (pydantic-settings) — env vars, budgets, deadlines
+│   ├── errors.py                  # Shared exception types
+│   ├── logging.py                   # JSON structured logging + bind()/unbind_all() context
+│   ├── budget.py                      # budget_exceeded() — USD/token spend check
+│   ├── relevance.py                     # Lightweight relevance filter for passages
+│   └── guardrails.py                      # wrap_untrusted() — prompt-injection defense for scraped text
+├── eval/                     # Self-evaluation harness
+│   ├── questions.yaml            # 30 authored eval questions across 6 domains
+│   ├── planted_claims.yaml        # 60 planted bad claims across 4 failure types
+│   ├── gold_labels.csv             # Human-labeled ground truth — owned by a person, not an LLM
+│   ├── injection_pages/             # 3 prompt-injection fixtures run through the real pipeline
+│   ├── baseline.py                    # Single-LLM-call baseline, scored by the same rubric as DeepDive
+│   ├── label.py                         # Scoring logic against gold labels
+│   ├── report.py                          # Aggregates results into EVAL.md-shaped output
+│   └── run_eval.py                          # Entry point — runs the full eval sweep
+├── prompts/                  # One versioned prompt template per agent role (`<role>.v1.md`)
+├── ui/streamlit_app.py       # Streamlit UI — submit a question, browse the structured, cited report
+├── tests/
+│   ├── unit/                    # One test file per module (`test_<module>.py`), fully mocked
+│   └── integration/                # End-to-end graph/API/replay/resynthesis tests, also mocked
+├── .github/workflows/         # ci.yml (no secrets, fully mocked) + agent-arena-2026-checks.yml (hackathon's own check)
+├── cli.py                    # `run` / `resume` / `replay` / `export` / `init-db` commands
+├── BLUEPRINT.md              # Full engineering spec, phase by phase
+├── DESIGN.md                 # Rationale — why, and what was rejected
+├── EVAL.md                   # Self-eval measurement detail
+└── requirements.txt
+```
+
 ## Quickstart
 
 ```bash
