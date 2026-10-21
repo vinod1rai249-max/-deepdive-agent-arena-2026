@@ -115,6 +115,16 @@ class Repo:
                 total_cost = session.query(LLMCall).filter_by(run_id=run_id).all()
                 run.total_cost_usd = sum(c.cost_usd for c in total_cost)
 
+    def get_run_cost_and_tokens(self, run_id: str) -> tuple[float, int]:
+        """Current spend for the budget check in agents/loop_control.py
+        — a lightweight sum, not the full `get_trail` query, since this
+        is called once per loop iteration."""
+        with self.session() as session:
+            calls = session.query(LLMCall).filter_by(run_id=run_id).all()
+            cost = sum(c.cost_usd for c in calls)
+            tokens = sum(c.input_tokens + c.output_tokens for c in calls)
+            return cost, tokens
+
     def create_subquestions(self, run_id: str, sub_questions: list[dict[str, Any]]) -> None:
         with self.session() as session:
             for sq in sub_questions:

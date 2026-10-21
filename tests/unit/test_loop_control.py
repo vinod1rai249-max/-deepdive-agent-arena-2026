@@ -39,11 +39,20 @@ def _mock_response(content: str) -> httpx.Response:
 
 class _FakeSettings:
     deadline_seconds_per_run = 600
+    budget_usd_per_run = 1000.0
+    budget_tokens_per_run = 100_000_000
 
 
 class _FakeRepo:
+    def __init__(self, spent_usd: float = 0.0, spent_tokens: int = 0) -> None:
+        self.spent_usd = spent_usd
+        self.spent_tokens = spent_tokens
+
     def update_subquestion_coverage(self, coverage: dict) -> None:
         pass
+
+    def get_run_cost_and_tokens(self, run_id: str) -> tuple[float, int]:
+        return self.spent_usd, self.spent_tokens
 
 
 def _state_with(subqs, claims, verdicts, iteration=0, max_iterations=3, no_new_evidence=False):
@@ -128,3 +137,44 @@ async def test_stops_with_no_new_evidence_even_if_still_thin(tmp_path):
     update = await decide(deps, "run-1", state)
 
     assert update["stop_reason"] == "no_new_evidence"
+
+
+@respx.mock
+async def test_stops_with_budget_when_spend_exceeds_the_cap(tmp_path):
+    """BLUEPRINT.md §6/§10: the loop checks real spend recomputed from
+    the DB, not a bare retry-count — found unwired during a self-review
+    (DESIGN.md §16) and fixed here."""
+    respx.post("https://api.meshapi.ai/v1/chat/completions").mock(
+        return_value=_mock_response(json.dumps({"criteria_satisfied": [False], "missing_aspect": "still thin"}))
+    )
+
+    subq = SubQuestionState(id="s1", text="q1", acceptance_criteria=["gives a figure"], time_scope=None, premise_flag=False)
+    claim = ClaimState(id="c1", subq_id="s1", text="claim", passage_id="p1", status="rejected")
+
+    class _OverBudgetSettings(_FakeSettings):
+        budget_usd_per_run = 1.0
+
+    deps = Deps(mesh=_client(tmp_path), search=None, repo=_FakeRepo(spent_usd=1.5), settings=_OverBudgetSettings())
+    state = _state_with([subq], [claim], [], iteration=0, max_iterations=3)
+
+    update = await decide(deps, "run-1", state)
+
+    assert update["stop_reason"] == "budget"
+
+
+@respx.mock
+async def test_does_not_stop_with_budget_when_under_the_cap(tmp_path):
+    respx.post("https://api.meshapi.ai/v1/chat/completions").mock(
+        return_value=_mock_response(json.dumps({"criteria_satisfied": [True], "missing_aspect": None}))
+    )
+
+    subq = SubQuestionState(id="s1", text="q1", acceptance_criteria=["gives a figure"], time_scope=None, premise_flag=False)
+    claim = ClaimState(id="c1", subq_id="s1", text="claim", passage_id="p1", status="verified")
+    verdict = {"claim_id": "c1", "confidence_score": 0.9, "confidence_level": "high"}
+
+    deps = Deps(mesh=_client(tmp_path), search=None, repo=_FakeRepo(spent_usd=0.01), settings=_FakeSettings())
+    state = _state_with([subq], [claim], [verdict], iteration=0, max_iterations=3)
+
+    update = await decide(deps, "run-1", state)
+
+    assert update["stop_reason"] == "coverage_met"  # not "budget" — plenty of headroom left

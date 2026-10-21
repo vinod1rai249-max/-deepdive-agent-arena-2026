@@ -24,6 +24,7 @@ from __future__ import annotations
 from agents.schemas import SpanJudgment
 from app.deps import Deps
 from app.state import ClaimState, PassageState, ReportSentenceState
+from core.guardrails import wrap_untrusted
 from core.logging import get_logger
 from verify.numeric_check import numbers_consistent
 from verify.span_match import span_exists
@@ -38,7 +39,7 @@ async def _judge(deps: Deps, run_id: str, sentence_text: str, evidence_text: str
         return await deps.mesh.complete_json(
             node="auditor",
             prompt_name="auditor.v1",
-            variables={"sentence": sentence_text, "evidence": evidence_text},
+            variables={"sentence": sentence_text, "evidence": wrap_untrusted(evidence_text)},
             schema=SpanJudgment,
             model_role="auditor",
             run_id=run_id,

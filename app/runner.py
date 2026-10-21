@@ -22,7 +22,7 @@ from app.deps import Deps
 from app.graph import build_graph, initial_state
 from app.state import VERIFIED_STATUSES, ClaimState, PassageState, SubQuestionState
 from core.config import Settings
-from core.logging import get_logger
+from core.logging import bind, get_logger
 from llm.client import MeshClient
 from retrieval.firecrawl_client import FirecrawlProvider
 from retrieval.null_provider import NullSearchProvider
@@ -52,6 +52,7 @@ async def execute_run(settings: Settings, repo: Repo, run_id: str, question: str
     `start_run` (CLI) and as the background task behind `POST /research`,
     which creates the Run itself (to return `run_id` immediately) and
     must not have a second Run row created underneath it."""
+    bind(run_id=run_id)
     deps = build_deps(settings, repo)
     repo.update_run_status(run_id, "in_progress")
 
@@ -84,6 +85,7 @@ async def resume_run(settings: Settings, repo: Repo, run_id: str) -> None:
     if run is None:
         raise ValueError(f"no such run: {run_id}")
 
+    bind(run_id=run_id)
     deps = build_deps(settings, repo)
     repo.update_run_status(run_id, "in_progress")
 
@@ -127,6 +129,7 @@ async def resynthesize_run(settings: Settings, repo: Repo, run_id: str) -> dict[
     Spends real Mesh calls (contradiction + synthesis + audit roles) —
     this is an explicit, human-triggered action, not part of the
     automatic pipeline."""
+    bind(run_id=run_id)
     export = repo.export_run(run_id)
     deps = build_deps(settings, repo)
 

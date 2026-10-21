@@ -3,10 +3,10 @@ whether to loop back to the Researcher for specific thin sub-questions or
 stop and hand off to the Synthesizer. All limits enforced here, in code
 — never in a prompt.
 
-Stop reasons: "coverage_met" | "max_iter" | "deadline" | "no_new_evidence".
-("budget" — per-call USD/token cost tracking — is a Hardening-bucket
-item, BLUEPRINT.md §17 item 8; this checks wall-clock deadline now since
-that's cheap and needs no extra plumbing.)
+Stop reasons: "coverage_met" | "max_iter" | "deadline" | "budget" | "no_new_evidence".
+Budget is checked at this per-iteration granularity, recomputed from
+real spend in the DB each time — not per individual Mesh call, which
+stays an explicit Hardening-bucket item (BLUEPRINT.md §17 item 8).
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import time
 from agents.coverage import compute_coverage
 from app.deps import Deps
 from app.state import VERIFIED_STATUSES, RunState
+from core.budget import budget_exceeded
 
 COVERAGE_THRESHOLD = 0.6
 
@@ -72,6 +73,8 @@ async def decide(deps: Deps, run_id: str, state: RunState) -> dict:
     next_iteration = state["iteration"] + 1
     stop_reason: str | None = None
 
+    spent_usd, spent_tokens = deps.repo.get_run_cost_and_tokens(run_id)
+
     if not thin_subq_ids:
         stop_reason = "coverage_met"
     elif state.get("no_new_evidence_triggered"):
@@ -80,6 +83,8 @@ async def decide(deps: Deps, run_id: str, state: RunState) -> dict:
         stop_reason = "max_iter"
     elif time.monotonic() - state["started_at"] >= deps.settings.deadline_seconds_per_run:
         stop_reason = "deadline"
+    elif budget_exceeded(spent_usd, spent_tokens, deps.settings.budget_usd_per_run, deps.settings.budget_tokens_per_run):
+        stop_reason = "budget"
 
     if stop_reason:
         return {"coverage": coverage, "stop_reason": stop_reason, "research_targets": [], "failure_reasons": {}}

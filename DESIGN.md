@@ -97,6 +97,17 @@ Several candidate HITL points were considered anyway, since a review pass surfac
 
 Every run still completes fully autonomously with zero human involvement — this is additive, not a dependency.
 
+## 17. Four gaps found by auditing the spec against the code, not just reading the spec
+
+A later self-review asked a sharper question than usual: not "does the blueprint describe this correctly," but "does the *code* actually do what the blueprint says it does." Grepping for the things §8 and §6 promised turned up four real gaps — not fabrications in the docs, just principles that were written down and never wired in:
+
+1. **The `<untrusted_source>` wrapping §8 described was never implemented.** `eval/injection_pages/` existed specifically to test a defense that didn't exist yet in any prompt. Fixed: `core/guardrails.py::wrap_untrusted()`, applied at every point raw scraped text reaches a prompt — the Drafter's passages, the Verifier's passage, the Auditor's evidence, the eval baseline's fetched evidence. Deliberately *not* applied to claim text, sentence text, or the question itself — those are model-generated or user-provided, not the injection vector; wrapping them would just add noise.
+2. **`core/budget.py` had a `RunBudget` class nothing ever called.** The deadline check in `agents/loop_control.py` was real; the USD/token half of "budget" was dead code with a docstring that claimed otherwise. Fixed by replacing the stateful, unused class with a plain function (`budget_exceeded`) that matches how it's actually invoked — recomputed from real `LLMCall` rows each iteration, not accumulated in memory — and wiring it into the same stop-reason chain as deadline/max_iter/no_new_evidence.
+3. **`core/logging.py`'s `bind()` context mechanism was built and never called.** Every graph node now binds `run_id`/`node` at its own entry point (`app/graph.py`) — redundantly from the run-level bind in `app/runner.py`, deliberately, so each node's logs are correct even if LangGraph schedules nodes as separate asyncio tasks with independently-copied contexts (Python's `contextvars` semantics, not something this codebase controls).
+4. (Not a gap, documented for completeness) — the diagram, bug-table framing, and architecture-table additions discussed in this round were a README presentation exercise, not a code change; no implementation decision to record.
+
+The pattern worth naming: **"the spec says X" and "the code does X" are different claims**, and only grepping the code answers the second one. All three real fixes above have regression tests specifically because of that distinction — a docstring asserting something is wired in is not evidence that it is.
+
 ## Open inputs still owned by the user
 
 These are decisions `BLUEPRINT.md` §18 flags as blocking and that this document cannot resolve on its own:

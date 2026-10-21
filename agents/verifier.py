@@ -19,6 +19,7 @@ import asyncio
 
 from agents.schemas import SpanJudgment
 from app.deps import Deps
+from core.guardrails import wrap_untrusted
 from app.state import ClaimState, PassageState, SourceState, VerdictState
 from core.logging import get_logger
 from core.relevance import passes_prefilter
@@ -73,7 +74,7 @@ async def _judge(deps: Deps, run_id: str, claim_text: str, passage_text: str) ->
         return await deps.mesh.complete_json(
             node="verifier",
             prompt_name="verifier.v1",
-            variables={"claim": claim_text, "passage": passage_text},
+            variables={"claim": claim_text, "passage": wrap_untrusted(passage_text)},
             schema=SpanJudgment,
             model_role="verifier",
             run_id=run_id,

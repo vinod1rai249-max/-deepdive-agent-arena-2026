@@ -326,7 +326,7 @@ deepdive/
   prompts/      planner.v1.md researcher.v1.md drafter.v1.md verifier.v1.md coverage.v1.md
                 contradiction.v1.md synthesizer.v1.md auditor.v1.md baseline.v1.md
   retrieval/    base.py firecrawl_client.py null_provider.py fetch_safe.py dedup.py dates.py tiers.py
-  core/         config.py errors.py logging.py budget.py relevance.py
+  core/         config.py errors.py logging.py budget.py relevance.py guardrails.py
   store/        models.py repo.py
   ui/           streamlit_app.py
   cli.py        (init-db, run, resume, export, replay entrypoints)
@@ -363,7 +363,7 @@ deepdive/
 |---|---|---|
 | 7 | Contradiction Checker, source-tier weighting in confidence | **Done.** Source-tier weighting was already in `verify/confidence.py` (Phase 3); Contradiction Checker built and tested, wired into the graph between the loop and the Synthesizer, which now renders a "Sources disagree" sentence quoting both conflicting claims verbatim. |
 | 7a | Human-in-the-loop override (§4.2) `[REVISED — new, not in the original plan]` | **Done.** A human can promote or confirm a rejected/unverified/partial claim with a required reason, via the UI or `POST /runs/{id}/claims/{id}/override`; triggers a scoped re-synthesis. Never mutates the AI's original `Verdict`. Tested at the repo, runner, and API layers. |
-| 8 | SSRF test fixtures, budget-cap tests, basic auth/rate-limit | **Partial.** SSRF fixtures done (Phase 2). Budget: wall-clock deadline check is real and tested (`loop_control.decide`'s `"deadline"` stop reason); per-call USD/token ceiling enforcement and dedicated budget-cap tests are **not done**. Auth/rate-limit: **not done**. |
+| 8 | SSRF test fixtures, budget-cap tests, basic auth/rate-limit | **Partial, improved.** SSRF fixtures done (Phase 2). Budget: both wall-clock deadline **and** USD/token spend (`core/budget.py::budget_exceeded`, recomputed from real `LLMCall` rows via `Repo.get_run_cost_and_tokens`) are now real, tested, and produce `stop_reason="budget"` — found unwired (a dead `RunBudget` class, never called) during a self-review, fixed (DESIGN.md §16). Still per-iteration granularity, not per-call — that finer grain remains explicitly deferred. Auth/rate-limit: **not done**. |
 | 9 | Langfuse tracing, Prometheus `/metrics`, Docker/compose | **Not done.** |
 | 10 | PDF export, follow-up chat, Alembic, pre-commit/gitleaks/mypy-strict | **Not done.** |
 

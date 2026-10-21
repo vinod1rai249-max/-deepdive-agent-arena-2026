@@ -13,6 +13,7 @@ import uuid
 from agents.schemas import DrafterOutput
 from app.deps import Deps
 from app.state import ClaimState, PassageState, SubQuestionState
+from core.guardrails import wrap_untrusted
 from core.logging import get_logger
 from core.relevance import top_k
 
@@ -45,7 +46,7 @@ async def _draft_for_subquestion(
                 variables={
                     "sub_question": subq["text"],
                     "acceptance_criteria": "; ".join(subq["acceptance_criteria"]),
-                    "passages": passage_block,
+                    "passages": wrap_untrusted(passage_block),
                 },
                 schema=DrafterOutput,
                 model_role="drafter",

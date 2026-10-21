@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from agents.schemas import SpanJudgment
 from app.deps import Deps
 from core.errors import GuardrailViolation, RetrievalError
+from core.guardrails import wrap_untrusted
 from retrieval.fetch_safe import assert_safe_url
 from verify.numeric_check import numbers_consistent
 from verify.span_match import span_exists
@@ -78,7 +79,7 @@ async def score_baseline_answer(deps: Deps, answer: BaselineAnswer, run_id: str 
             judgment: SpanJudgment = await deps.mesh.complete_json(
                 node="baseline_grader",
                 prompt_name="auditor.v1",
-                variables={"sentence": sentence.text, "evidence": page.text[:4000]},
+                variables={"sentence": sentence.text, "evidence": wrap_untrusted(page.text[:4000])},
                 schema=SpanJudgment,
                 model_role="auditor",
                 run_id=run_id,

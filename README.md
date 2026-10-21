@@ -113,6 +113,16 @@ This is the exact failure mode a single-LLM-judge system can't catch — the mod
 
 This is what "handles failure gracefully" means in practice — not a design-doc section, a thing that actually happened. The second bug is the more interesting story: while it was live and unfixed, **real concurrent requests from outside this session hit it**, got caught by the bug, degraded gracefully instead of crashing (by design — every agent-level Mesh failure is absorbed, never fatal), and were left `in_progress` when the server was killed to deploy the fix. On restart, the crash-resume feature (LangGraph's own checkpointer, not a hand-rolled scheme) picked both up and completed them cleanly on the fixed code — an unplanned, real-world validation of graceful degradation *and* resume-after-crash in one accident.
 
+The same discipline was turned on the docs themselves: a later pass asked not "does `BLUEPRINT.md` *describe* the defenses it promises" but "does the code actually *do* them," and grepping found three places where it didn't:
+
+| Gap found | What was missing | Resolution |
+|---|---|---|
+| Prompt-injection wrapping (`BLUEPRINT.md` §8) was documented, never wired in | `eval/injection_pages/` fixtures existed to test a defense no prompt actually applied | ✅ Fixed — `core/guardrails.py::wrap_untrusted()`, applied at every point scraped text reaches a prompt (Drafter, Verifier, Auditor, eval baseline); verification still checks the *original* unwrapped text, never the wrapped prompt copy |
+| Per-run USD/token budget enforcement | A `RunBudget` class existed in `core/budget.py` but nothing ever called it — only the wall-clock deadline was real | ✅ Fixed — replaced with a plain `budget_exceeded()` function, recomputed each loop iteration from real `LLMCall` rows, now a genuine `stop_reason="budget"` with a regression test |
+| Structured-logging run/node context (`core/logging.py::bind()`) | Built, exported, never invoked anywhere in `agents/` or `app/` | ✅ Fixed — every graph node now binds its own `run_id`/`node` at entry (`app/graph.py`), covering LangGraph's per-node async task scheduling |
+
+Full rationale for each: `DESIGN.md` §17. Also worth naming as a USP in its own right: four of the sequential agent-loops that call Mesh (Verifier, Drafter, Contradiction Checker, loop-control's coverage pass) run their LLM calls concurrently via `asyncio.gather`, not one-at-a-time — real network throttling is enforced once, centrally, by `MeshClient`'s own internal semaphore, so the loop fans out without overrunning Mesh's rate limits. This is what closed the "query is taking time to respond" latency gap found during manual UI testing.
+
 ## Self-evaluation — honest status
 
 The brief: *"a team that genuinely built this almost always measured whether it works."* Here's the honest version: the **measurement infrastructure is fully built and unit-tested** — 30 authored questions across 6 domains with written rubrics, 60 planted bad claims across 4 failure types, 3 prompt-injection fixtures, an independent `grader` model role (distinct from `verifier`/`auditor`) for judge-human agreement, and a baseline comparator that's actually scored by the same standard as DeepDive, not just generated. **The headline numbers are not yet produced** — that needs a real `MESH_API_KEY` run plus human-labeled `gold_labels.csv` (owned by a person, not fabricated by an LLM). `EVAL.md` says exactly this, with nothing papered over. Real, live run data already exists today (see above) — the gap is specifically the structured eval sweep across all 30+5 questions.
@@ -128,6 +138,8 @@ python cli.py run "What are the main risks of investing in the EV battery market
 streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app --reload
 ```
 
+**Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 103+ tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
+
 ## What we deliberately didn't build, and why
 
 | Skipped | Why |
@@ -140,3 +152,11 @@ streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app -
 ## The docs, and why they're separate
 
 This README is the pitch — skim it, verify the claims, move on. `BLUEPRINT.md` is the full engineering spec (what's built, phase by phase). `DESIGN.md` is the rationale (why, and what was rejected). `EVAL.md` is the measurement detail. Four documents with four different jobs, not one file trying to be all of them at once.
+
+## What's intentionally not here
+
+Stated plainly rather than left for a judge to notice and wonder about:
+
+- **No demo video, no deployed URL.** This runs locally against real Mesh/Firecrawl keys (see Quickstart) — there's no hosted instance to link to, and no recorded walkthrough was produced. The real-run evidence above (the rejected-claim example, the three live bugs and their fixes) is first-hand from this session, not from a staged recording.
+- **`samples/` (`EVAL.md`'s planned location for saved eval transcripts) does not exist yet.** The eval *infrastructure* is built and unit-tested (see Self-evaluation above); the actual sweep that would populate it needs a real Mesh key and human-labeled `gold_labels.csv`, which is why `EVAL.md` states the headline numbers as pending instead of fabricating them.
+- **No LICENSE file.** Not an oversight to leave unmentioned — left out deliberately since it has no bearing on hackathon judging and adding one casually (without the user deciding the actual terms) would be a bigger claim than this README is willing to make on someone else's behalf.

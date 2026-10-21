@@ -31,17 +31,20 @@ from langgraph.graph.state import CompiledStateGraph
 from agents import auditor, contradiction, curator, drafter, loop_control, planner, researcher, synthesizer, verifier
 from app.deps import Deps
 from app.state import VERIFIED_STATUSES, RunState
+from core.logging import bind
 
 
 def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
     graph = StateGraph(RunState)
 
     async def planner_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="planner")
         sub_questions = await planner.plan(deps, state["run_id"], state["question"])
         deps.repo.mark_run_node(state["run_id"], "planner")
         return {"sub_questions": sub_questions}
 
     async def researcher_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="researcher")
         target_ids = set(state["research_targets"]) if state["research_targets"] else {
             sq["id"] for sq in state["sub_questions"]
         }
@@ -61,6 +64,7 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         }
 
     def curator_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="curator")
         already_curated_source_ids = {p["source_id"] for p in state["passages"]}
         new_sources = [s for s in state["sources"] if s["id"] not in already_curated_source_ids]
         deps.repo.mark_run_node(state["run_id"], "curator")
@@ -72,6 +76,7 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         return {"passages": state["passages"] + new_passages}
 
     async def drafter_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="drafter")
         already_drafted_passage_ids = {c["passage_id"] for c in state["claims"]}
         new_passages = [p for p in state["passages"] if p["id"] not in already_drafted_passage_ids]
         deps.repo.mark_run_node(state["run_id"], "drafter")
@@ -81,6 +86,7 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         return {"claims": state["claims"] + new_claims}
 
     async def verifier_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="verifier")
         already_verified_ids = {v["claim_id"] for v in state["verdicts"]}
         updated_claims, new_verdicts = await verifier.verify_all(
             deps, state["run_id"], state["claims"], state["passages"], state["sources"], already_verified_ids
@@ -89,16 +95,19 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         return {"claims": updated_claims, "verdicts": state["verdicts"] + new_verdicts}
 
     async def loop_decision_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="loop_decision")
         update = await loop_control.decide(deps, state["run_id"], state)
         deps.repo.mark_run_node(state["run_id"], "loop_decision")
         return update
 
     async def contradiction_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="contradiction")
         contradictions = await contradiction.check_all(deps, state["run_id"], state["sub_questions"], state["claims"])
         deps.repo.mark_run_node(state["run_id"], "contradiction")
         return {"contradictions": contradictions}
 
     async def synthesizer_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="synthesizer")
         verified_claims = [c for c in state["claims"] if c["status"] in VERIFIED_STATUSES]
         sentences = await synthesizer.synthesize(
             deps, state["run_id"], state["sub_questions"], verified_claims, state["contradictions"]
@@ -107,6 +116,7 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         return {"report_sentences": sentences}
 
     async def auditor_node(state: RunState) -> dict:
+        bind(run_id=state["run_id"], node="auditor")
         final_sentences = await auditor.audit_all(
             deps, state["run_id"], state["report_sentences"], state["claims"], state["passages"]
         )
