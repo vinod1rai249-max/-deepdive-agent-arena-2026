@@ -36,20 +36,24 @@ The brief's own framing: *"Tools that produce cited reports from one question al
 flowchart TD
     Q(["❓ Research Question"]) --> Planner
 
-    subgraph LOOP["🔁 Research &amp; Verification Loop"]
+    subgraph LOOP["🔁 Research &amp; Verification Loop (max 3 iterations)"]
         direction TB
-        Planner["🧭 Planner<br/>splits into sub-questions"] --> Researcher
+        Planner["🧭 Planner<br/>sub-questions + acceptance criteria<br/>flags a false premise"] --> Researcher
         Researcher["🌐 Researcher<br/>parallel search + scrape"] --> Curator
+        Search[("🔌 Search provider<br/>Firecrawl → free_web fallback<br/>Wikipedia · arXiv · PubMed")] -.-> Researcher
         Curator["🧹 Evidence Curator<br/>dedupe + chunk — code only"] --> Drafter
-        Drafter["✍️ Drafter<br/>extracts atomic claims"] --> Verifier
-        Verifier["🔎 Claim Verifier<br/>LLM quote + code span-match"] --> Check{"Coverage ≥ 0.6?"}
+        Drafter["✍️ Drafter<br/>atomic claims, cited by index"] --> Verifier
+        Verifier["🔎 Claim Verifier<br/>LLM quotes a span, then CODE checks:<br/>span exists · numbers match ·<br/>scope not widened · no self-reported gap<br/>+ re-attribution + confidence"] --> Check{"Coverage ≥ 0.6?"}
         Check -- "no — thin sub-question<br/>+ failure reason" --> Researcher
     end
 
-    Check -- "yes, or max iterations" --> Contradiction
+    Check -- "yes, or max iter / budget /<br/>deadline / no new evidence" --> Contradiction
     Contradiction["⚖️ Contradiction Checker<br/>flags disagreement, keeps both"] --> Synthesizer
-    Synthesizer["📝 Synthesizer<br/>writes from verified claims only"] --> Auditor
-    Auditor["🛡️ Report Auditor<br/>different model, independent re-check"] --> Report(["📄 Final Report<br/>every sentence cited"])
+    Synthesizer["📝 Synthesizer<br/>verified claims only<br/>+ Gaps / Unverified + Premise check (no LLM)"] --> Auditor
+    Auditor["🛡️ Report Auditor<br/>different model, same code checks,<br/>rewrite or strip failing sentences"] --> Report(["📄 Final Report<br/>every sentence cited via DB lookup"])
+
+    Report --> Followup["💬 Follow-up agent<br/>answers from stored evidence,<br/>every sentence re-verified"]
+    Report --> Trail[("🗂️ Decision trail (SQLite)<br/>sub-questions · searches · sources ·<br/>claims · verdicts · LLM calls")]
 
     Human["🧑 Human Reviewer<br/>optional override"] -. "promotes/confirms a claim,<br/>triggers scoped re-synthesis" .-> Contradiction
 
@@ -58,12 +62,14 @@ flowchart TD
     classDef decision fill:#FEF3C7,stroke:#D97706,stroke-width:1.5px,color:#78350F;
     classDef endpoint fill:#4F46E5,stroke:#312E81,stroke-width:2px,color:#FFFFFF;
     classDef human fill:#FCE7F3,stroke:#DB2777,stroke-width:1.5px,color:#831843;
+    classDef store fill:#F1F5F9,stroke:#64748B,stroke-width:1.5px,color:#0F172A;
 
-    class Planner,Researcher,Drafter,Verifier,Contradiction,Synthesizer,Auditor agent;
+    class Planner,Researcher,Drafter,Verifier,Contradiction,Synthesizer,Auditor,Followup agent;
     class Curator code;
     class Check decision;
     class Q,Report endpoint;
     class Human human;
+    class Search,Trail store;
 ```
 
 *(Renders natively on GitHub. If your viewer doesn't support Mermaid, the plain-text version is in `BLUEPRINT.md` §4.)*
@@ -71,13 +77,14 @@ flowchart TD
 | Agent | Job | Model role | What makes it distinct |
 |---|---|---|---|
 | **Planner** | Splits the question into 3–7 sub-questions with acceptance criteria; flags a false/loaded premise | `planner` | Only agent that can set `premise_flag` |
-| **Researcher** | Generates search queries, fetches real web content (Firecrawl), runs concurrently across sub-questions | `cheap` (query-gen) | Only agent that touches the network |
+| **Researcher** | Generates search queries, fetches real web content (Firecrawl, falling back to free Wikipedia/arXiv/PubMed when credits run out), runs concurrently across sub-questions | `cheap` (query-gen) | Only agent that touches the network |
 | **Evidence Curator** | Dedupes near-identical sources, chunks into passages | *none — deterministic code* | The one pipeline stage with zero LLM calls |
 | **Drafter** | Extracts atomic claims from passages, one fact per claim | `drafter` | Cites by per-call index only, never a real ID |
-| **Claim Verifier** | Independently checks each claim against its cited source | `verifier` | The only agent whose output is cross-checked by code, not just read |
+| **Claim Verifier** | Independently checks each claim against its cited source: LLM quotes a span; code checks span exists, numbers match, scope not widened, no self-reported gap | `verifier` | The only agent whose output is cross-checked by code, not just read |
 | **Contradiction Checker** | Flags verified claims that genuinely disagree | `cheap` | Never resolves a disagreement — always keeps both |
-| **Synthesizer** | Writes report sentences from verified claims only | `synth` | Composed per sub-question, so context never grows unbounded |
+| **Synthesizer** | Writes report sentences from verified claims only; appends a deterministic "Gaps / Unverified" section and a premise-check note | `synth` | Composed per sub-question, so context never grows unbounded |
 | **Report Auditor** | Independently re-checks every synthesized sentence | `auditor` | **Never shares a model with `verifier`, even on fallback** — enforced by a test |
+| **Follow-up agent** | Answers a new question from a finished run's stored passages (no new search); drops any sentence that fails the Verifier's checks | `synth` + `verifier` | Reuses earlier research instead of re-searching |
 | **Human Reviewer** | Optional: promotes or confirms a rejected claim | *none — a person* | Never mutates the AI's original verdict; additive only |
 
 ## Key design decisions

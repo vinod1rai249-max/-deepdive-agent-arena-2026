@@ -70,12 +70,23 @@ Do **not** add: vector DBs for web content, queues, microservices, LiteLLM, NeMo
 POST /research ──► job (background task, resumable — §10) ──► LangGraph run
                                               │
  Planner ─► Researcher×N (parallel) ─► Evidence Curator ─► Drafter ─► Claim Verifier
-    ▲                                                                      │
-    └──── targeted re-research (weak sub-questions) ◄────────────────────┤ coverage < τ AND iter < max AND budget OK
-                                                                          ▼
+    ▲            │                                                       │
+    │            └─ SearchProvider: Firecrawl ──(credits exhausted)──► free_web
+    │               (Wikipedia · arXiv · PubMed + safe fetch)           │
+    │                                                                   │
+    │   Verifier stages: prefilter ► LLM span quote ► span exists ► numbers match ►
+    │                    scope not widened ► no self-reported gap ► re-attribution ► confidence
+    │                                                                   │
+    └──── targeted re-research (weak sub-questions) ◄───────────────────┤ coverage < τ AND iter < max AND budget OK
+                                                                        ▼
                          Contradiction Checker ─► Synthesizer ─► Report Auditor ─► Final report
-                                                                    │ any sentence fails
-                                                                    └─► rewrite/strip, re-audit (max 2)
+                         (keeps both sides)      (verified claims   │ any sentence fails      │
+                                                  only + Gaps /     └─► rewrite/strip,        │
+                                                  Unverified +          re-audit (max 2)      ▼
+                                                  Premise check)                    Follow-up agent
+                                                                         (answers from stored evidence,
+                                                                          every sentence re-verified)
+ Human reviewer (optional) ──► override a claim ──► re-run Contradiction ► Synthesizer ► Auditor only
 ```
 
 Every node: reads typed state, writes typed state, persists its outputs to SQLite **before** moving on (this is what makes resume possible — §10), emits a progress event, fails soft (records failure, does not crash the run).
