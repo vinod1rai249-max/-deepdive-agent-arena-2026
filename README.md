@@ -58,10 +58,6 @@ Built for **Agent Arena 2026, Track 01**.
 - [Self-evaluation — test set and results](#self-evaluation)
 - [Project layout](#project-layout)
 - [Quickstart](#quickstart)
-- [Scope freeze](#scope-freeze)
-- [What we deliberately didn't build, and why](#what-we-deliberately-didnt-build)
-- [The docs, and why they're separate](#the-docs)
-- [What's intentionally not here](#whats-intentionally-not-here)
 
 </details>
 
@@ -377,54 +373,6 @@ streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app -
 ```
 
 **Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 144 tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
-
----
-
-<a id="scope-freeze"></a>
-
-## 🔒 Scope freeze
-
-> [!IMPORTANT]
-> **Scope is frozen as of 2026-10-24 for the 2026-10-31 submission. No new features will be added.** Allowed from here: bug fixes, correcting a number or a claim in the docs that turns out to be wrong, and the human labelling of `eval/gold_labels.csv`. Everything below is deliberately out of scope for this submission:
-
-- PDF export, uploaded-document support, a Firecrawl-backed re-run of the sweep, ablations, a deployed URL, auth/Docker/Prometheus/Langfuse.
-- Fixing entity substitution (Costa Rica → "the US") and "true but irrelevant" evidence — documented as known failures in `EVAL.md` §5.
-- Broadening the scope-widening word list or the self-reported-gap regex: both were written after reading failure cases, so further tuning would be fitting to the test.
-
----
-
-<a id="what-we-deliberately-didnt-build"></a>
-
-## ✂️ What we deliberately didn't build, and why
-
-| Skipped | Why |
-|---|---|
-| Vector DB for retrieval | Keeps Mesh as the only AI dependency; passages are chunked, not embedded — `DESIGN.md` §9 |
-| Alembic migrations | No live production data to migrate across schema versions in a hackathon build — `DESIGN.md` §8 |
-| A pause-for-confirmation when the Planner flags a false premise | Would make the automated "abstention accuracy" eval metric depend on a human being present for every run — actively counterproductive, not just unnecessary — `DESIGN.md` §15 |
-| Docker, Prometheus, Langfuse, API auth | Real engineering practice, zero weight in what this track actually judges — `BLUEPRINT.md` §17 |
-
----
-
-<a id="the-docs"></a>
-
-## 📚 The docs, and why they're separate
-
-This README is the pitch — skim it, verify the claims, move on. `BLUEPRINT.md` is the full engineering spec (what's built, phase by phase). `DESIGN.md` is the rationale (why, and what was rejected). `EVAL.md` is the measurement detail. Four documents with four different jobs, not one file trying to be all of them at once.
-
----
-
-<a id="whats-intentionally-not-here"></a>
-
-## 🙋 What's intentionally not here
-
-Stated plainly rather than left for a judge to notice and wonder about:
-
-- **No deployed URL.** This runs locally against real Mesh/Firecrawl keys (see Quickstart) — there's no hosted instance to link to. A [demo video](https://www.youtube.com/watch?v=yvRKvqpDM24) is linked at the top instead; the real-run evidence in this README (the rejected-claim example, the three live bugs and their fixes) is first-hand from this session, not staged for the recording.
-- **The sweep did not use Firecrawl** (credits exhausted until after the deadline) and judge–human agreement is unmeasured until the 37 pairs in `gold_labels.csv` are labelled by a person. There is no `samples/` directory of replayable runs; real outputs live in `eval/results/`.
-- **No PDF export.**
-- **No uploaded-document support.** The brief lists it as optional; `markitdown` is in `requirements.txt` but no upload endpoint or parser is built.
-- **No LICENSE file.** Not an oversight to leave unmentioned — left out deliberately since it has no bearing on hackathon judging and adding one casually (without the user deciding the actual terms) would be a bigger claim than this README is willing to make on someone else's behalf.
 
 <br/>
 

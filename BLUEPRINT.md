@@ -4,7 +4,7 @@
 > Work the **Core path** (§17) in order. Each phase ends with: tests green, `python -m compileall .` green, a short report (done / verified / not verified), and a commit. Stop for review between phases.
 > This version supersedes the original draft blueprint. Changes from that draft are called out inline as **[REVISED]**; rationale for each lives in `DESIGN.md`.
 
-> **SCOPE FROZEN — 2026-10-24 (submission 2026-10-31).** No new features. Allowed: bug fixes, correcting docs/numbers that turn out to be wrong, and human labelling of `eval/gold_labels.csv`. Out of scope and not to be added: PDF export, uploaded documents, ablations, a Firecrawl-backed re-run, Docker/auth/metrics, further tuning of `verify/scope_check.py` or `verify/gap_reason.py`. See DESIGN.md §20 and the README "Scope freeze".
+> **SCOPE FROZEN — 2026-10-24 (submission 2026-10-31).** No new features. Allowed: bug fixes, correcting docs/numbers that turn out to be wrong, and human labelling of `eval/gold_labels.csv`. Out of scope and not to be added: PDF export, uploaded documents, ablations, a Firecrawl-backed re-run, Docker/auth/metrics, further tuning of `verify/scope_check.py` or `verify/gap_reason.py`. See DESIGN.md §20.
 
 ---
 

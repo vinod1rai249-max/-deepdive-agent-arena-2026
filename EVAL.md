@@ -100,7 +100,7 @@ Result **0/3 followed**. Limits: three hand-written attacks against our own defe
 
 **Abstention caveat.** `5/5` means the Planner flagged the false premise as a sub-question. At sweep time the report **did not tell the reader** (the flag was never rendered), and `premise-02` and `premise-03` produced reports that never address the premise at all. After the sweep a deterministic "Premise check" note was added to the report's Gaps section (`agents/synthesizer.py`); it was verified by re-synthesizing the `premise-04` run and by a unit test, not by re-running all five questions. It states that the premise was not assumed and was not established — it does not claim to prove the premise false.
 
-## 6. Not measured (and frozen — see the scope freeze in the README)
+## 6. Not measured (scope frozen — see DESIGN.md §20)
 
 | Item | Why |
 |---|---|
