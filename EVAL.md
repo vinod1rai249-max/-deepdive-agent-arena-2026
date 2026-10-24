@@ -8,7 +8,8 @@ Every number below is copied from a JSON file in `eval/results/`, produced by re
 |---|---|
 | `run_20261024T122104Z.json` | Planted-claim run **before** the scope-widening fix (57/60). |
 | `run_20261024T133235Z.json` | Planted-claim run **after** the fix (60/60). |
-| `run_20261024T133422Z.json` | The full sweep: planted claims, 3 injection fixtures, 12 research questions + 5 false-premise questions, independent grading, rubric coverage, baseline. |
+| `run_20261024T133422Z.json` | The full sweep **before** the self-reported-gap rule (§9): planted claims, 3 injection fixtures, 12 research + 5 false-premise questions, independent grading, rubric, baseline. |
+| `run_20261024T143926Z.json` | The same sweep **after** the self-reported-gap rule (no baseline re-run). **These are the current headline numbers.** |
 | `grade_existing_20261024T125734Z.json` | Independent re-grade of 10 earlier stored runs (Firecrawl-backed). |
 
 ## Read this first: which evidence source produced which numbers
@@ -20,27 +21,31 @@ Firecrawl's free credits ran out mid-project ("Payment Required") and the next r
 
 ## 1. Headline numbers (full sweep, `free_web` evidence)
 
-| Metric | Result |
-|---|---|
-| Planted-claim recall (60 bad claims → Verifier) | **60/60 = 1.00** (was 57/60 before the fix, see §3) |
-| Prompt-injection resistance (3 fixtures, real pipeline) | **0/3 followed** (target 0) |
-| Independent-grader support of cited sentences, strict | **163/220 = 0.741** (12 research questions) |
-| Independent-grader support, lenient (supported + partial) | **217/220 = 0.986**; 3 unsupported (1.4%), 54 partial |
-| Claim pass rate (verified / drafted) | 0.960 [0.920, 0.991] (n=12) |
-| Sentence support rate (Auditor kept / synthesized cited) | 0.857 [0.805, 0.903] (n=12) |
-| Rubric coverage (grader vs rubric written before any run) | 0.840 [0.708, 0.945] (n=12) |
-| Abstention accuracy (false premise **flagged by the Planner**) | 5/5 — flagging only, see the caveat in §5 |
-| Cost per question (pipeline, est.) mean / p50 / p95 | $0.145 / $0.158 / $0.225 |
-| Latency per question mean / p50 / p95 | 293 s / 251 s / 525 s (3 questions in parallel) |
-| Stop reasons | 15 `max_iter`, 2 `no_new_evidence` (none stopped on `coverage_met`) |
-| Judge–human agreement, false-rejection rate | **Not measured** — see §6 |
+| Metric | Before gap rule (`…133422Z`) | **After gap rule (`…143926Z`)** |
+|---|---|---|
+| Planted-claim recall (60 bad claims → Verifier) | 60/60 | **60/60** (rejection stages: 57 entailment, 2 scope_widening, 1 self_reported_gap) |
+| Prompt-injection resistance (3 fixtures, real pipeline) | 0/3 followed | **0/3 followed** |
+| Independent-grader support of cited sentences, strict | 163/220 = 0.741 | **200/207 = 0.966** |
+| Independent-grader support, lenient (+ partial) | 217/220 = 0.986 | **207/207 = 1.000** |
+| Sentences the independent grader judged unsupported | 3 | **0** |
+| Cited sentences kept in the final reports | 220 | 207 (−6%) |
+| Claim pass rate (verified / drafted) | 0.960 | 0.939 [0.893, 0.976] |
+| Sentence support rate (Auditor kept / synthesized cited) | 0.857 | 0.748 [0.668, 0.820] |
+| Rubric coverage (grader vs rubric written before any run) | 0.840 | **0.840** [0.694, 0.972] |
+| Abstention (false premise flagged by the Planner) | 5/5 | 5/5 — flagging only, see §5 |
+| Cost per question (pipeline, est.) mean / p95 | $0.145 / $0.225 | $0.107 / $0.246 |
+| Latency per question mean / p50 / p95 | 293 / 251 / 525 s | 264 / 236 / 425 s |
+| Stop reasons | 15 `max_iter`, 2 `no_new_evidence` | 13 `max_iter`, 4 `no_new_evidence` |
+| Judge–human agreement, false-rejection rate | **Not measured** — §6 | **Not measured** — §6 |
 
-The "independent grader" is `anthropic/claude-sonnet-5`, which shares no model with the Verifier or Auditor (`tests/unit/test_model_roles.py`) and sees none of their verdicts. It had 0 errors. 95% intervals are bootstrap over questions; the strict support rate has no interval because it is pooled over sentences.
+The "independent grader" is `anthropic/claude-sonnet-5`, which shares no model with the Verifier or Auditor (`tests/unit/test_model_roles.py`) and sees none of their verdicts. It had 0 errors. Intervals are bootstrap over questions.
 
-What the numbers do and do not say:
-- About three in four cited sentences are fully supported by their own cited passage under a strict independent judge, and 98.6% are at least partly supported. The 25% that are only "partial" (54 sentences) are the main weakness (§5).
-- A 96% claim pass rate is high because Wikipedia text is easy to quote. It is not evidence the Verifier is lenient; the independent grader is the check on that.
-- Every research question ended on `max_iter`, not `coverage_met`: the coverage judge rarely considers all acceptance criteria satisfied, so the loop runs to its limit. That is a tuning issue (threshold 0.6, strict judge), not a correctness one.
+Read the before/after column with these caveats, not as a clean A/B:
+- **It is not a controlled experiment.** The "after" sweep re-ran the whole pipeline; the live Wikipedia/arXiv/PubMed fetches and the loop's search queries are not byte-identical, so the evidence and the drafted claims differ somewhat between the two runs. 12 research questions is a small sample.
+- **The strict-support gain has a cost, and it is visible in the table:** the Auditor now keeps fewer of the sentences it is shown (0.857 → 0.748), and the final reports contain 6% fewer cited sentences. Rubric coverage did not move (0.84 → 0.84), so on this sample the removed sentences did not cost rubric aspects.
+- **A 100% lenient score does not mean "no errors".** The grader sees the same single stored passage the pipeline cited; it cannot catch a sentence that is faithful to a passage that is itself irrelevant or wrong (failure #5).
+- A 94–96% claim pass rate is high partly because Wikipedia text is easy to quote; it is not evidence the Verifier is lenient — the independent grader is the check on that.
+- Every question stopped on `max_iter` or `no_new_evidence`, never `coverage_met`: the coverage judge rarely considers every acceptance criterion satisfied. A tuning issue, not a correctness one.
 
 ## 2. Baseline comparison (`eval/baseline.py`)
 
@@ -91,11 +96,11 @@ Result **0/3 followed**. Limits: three hand-written attacks against our own defe
 6. **Earlier Firecrawl run, same pattern.** *"Battery factories in Europe and the United States depend heavily on imports from China…"* cited a passage only about "need of diversification"; the Auditor wrote "does not specifically mention dependency" and passed it. (This was 3 of the 7 unsupported sentences in the earlier 216-sentence regrade.)
 7. **Scope-widening the Verifier let through before the fix:** planted `ue-01` (Northeast region → "overall sales"), `ue-03` (one retailer → "entire economy"), `ue-04` (single facility → "national"). Fixed in §3.
 
-**What the gallery says about the design:** the Auditor repeatedly writes a reason that *describes the gap* and then passes the sentence, because it accepts `partial`. Four of the seven items above (3, 4, 6, and 1 in effect) are that same pattern. An independent grader catches them; our own Auditor does not. The next fix is mechanical and not done: if an auditor/verifier `reason` itself says the evidence "does not mention / does not specifically / does not link", treat the verdict as unsupported — or require `supported` (not `partial`) for any sentence that names a place, entity or relationship not found in the span.
+**What the gallery says about the design:** the Auditor repeatedly wrote a reason that *describes the gap* and then passed the sentence, because it accepts `partial` (items 3, 4, 6, and 1 in effect). An independent grader caught them; our own Auditor did not. This was fixed by the self-reported-gap rule (§9). In the post-fix sweep the grader found 0 unsupported sentences; that does not prove the Costa Rica / US substitution (item 1) is fixed — that sentence did not reappear in the new run, and nothing in the rule targets entity substitution.
 
 **Abstention caveat.** `5/5` means the Planner flagged the false premise as a sub-question. At sweep time the report **did not tell the reader** (the flag was never rendered), and `premise-02` and `premise-03` produced reports that never address the premise at all. After the sweep a deterministic "Premise check" note was added to the report's Gaps section (`agents/synthesizer.py`); it was verified by re-synthesizing the `premise-04` run and by a unit test, not by re-running all five questions. It states that the premise was not assumed and was not established — it does not claim to prove the premise false.
 
-## 6. Not measured
+## 6. Not measured (and frozen — see the scope freeze in the README)
 
 | Item | Why |
 |---|---|
@@ -112,6 +117,16 @@ Result **0/3 followed**. Limits: three hand-written attacks against our own defe
 
 10 stored runs, 216 cited sentences, independent grader: strict 175/216 = 0.810, lenient 209/216 = 0.968, 7 unsupported; claims passing verification 625/666 = 0.938. Seven of those runs used the corrected model config (verifier = `claude-haiku-4.5` only): strict 100/124 = 0.806, lenient 122/124 = 0.984. The pre-fix config (verifier mostly `gpt-4o`, the Auditor's model) scored 75/92 = 0.815 strict — no measurable difference at this sample size. Rubric coverage on four corrected-config runs: 0.75, 0.33, 1.0, 1.0.
 
+## 9. Self-reported-gap rule (`verify/gap_reason.py`)
+
+**Rule:** if the Verifier or Auditor returns `partial` and its own `reason` contains a negated coverage phrase ("does not mention / state / address / link …", "no mention of …"), the verdict is a fail with `stage_failed="self_reported_gap"`. It applies to the Verifier, the Auditor and the follow-up agent. Deterministic, no extra LLM call.
+
+**Why it is limited to `partial`.** Before choosing the rule, I measured it offline on the 480 independently-graded sentences from the earlier runs (the pre-fix pooled set): 142 had an Auditor reason containing such a phrase. Of those, the independent grader judged 60 (42%) fully supported, 73 (51%) partial and 9 (6%) unsupported or contradicted. A blanket rule that strips every flagged sentence would raise the strict score from 0.77 to 0.92 but delete 30% of the report, including 16% of the genuinely supported sentences. Restricting the rule to `partial` verdicts keeps the verdicts the model itself called incomplete and leaves `supported` verdicts alone.
+
+**Measured effect:** see the before/after in §1 (strict 0.741 → 0.966, unsupported 3 → 0, cited sentences 220 → 207, rubric unchanged), with the not-a-controlled-A/B caveat above. Planted claims: one of the 60 is now rejected by this rule instead of by entailment.
+
+**Known weaknesses:** it is a regex over free-text model output, so a model that phrases the gap differently ("lacks any reference to…") slips past it; and a reason that says "does not mention" about something irrelevant to the sentence would reject a good sentence. The regex was written after reading the failure cases, so treat the planted-claim result as a regression test, not generalisation evidence.
+
 ## What is built (and unit-tested without credits)
 
 | Component | What it does | Verified by |
@@ -122,7 +137,7 @@ Result **0/3 followed**. Limits: three hand-written attacks against our own defe
 | `eval/run_eval.py` | Sweep with independent grading, rubric, abstention, injection, baseline; resumable, written incrementally | `tests/unit/test_eval_metrics.py`, `test_eval_grader.py` |
 | `eval/grade_runs.py` | Independent re-grade of runs already in the DB | Run for real |
 | `eval/baseline.py` | Single-prompt comparator scored with the Auditor standard | Run for real; `tests/integration/test_baseline_scoring.py` |
-| `eval/label.py`, `eval/gold_labels.csv` | Human labelling | Needs a human |
+| `eval/label.py`, `eval/gold_labels.csv` | Human labelling; 37 shuffled candidate pairs, `human_label` blank | Needs a human |
 | `eval/report.py` | Renders a results JSON with bootstrap 95% CIs | `tests/unit/test_eval_metrics.py` |
 
 Bugs the live evaluation found in our own code, all fixed with tests: `evaluate_question` crashed on a missing `claim_ids` key; Firecrawl rate-limit errors were not retried (now retried honouring `retry after`, shared concurrency cap); and with Firecrawl exhausted every sub-question got zero evidence, which is what the credit-exhaustion fallback to `free_web` now handles (`tests/unit/test_free_web_and_fallback.py`).

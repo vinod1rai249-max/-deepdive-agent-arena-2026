@@ -160,3 +160,13 @@ With Firecrawl's credits exhausted until after the deadline, the second `SearchP
 5. **Injection resistance is now measured** (`eval/injection.py`): each hostile page is the only source of a real run, plus a planted false claim per page. 0/3 followed — a smoke test of our own defence, not an adversarial audit.
 
 Not done: human labels (37 candidate pairs are in `eval/gold_labels.csv`, blank — only a person can fill them), ablations, PDF export, a Firecrawl-backed re-run.
+
+## 20. Closing the `partial` pattern, and freezing scope
+
+**The pattern.** The independent grader kept finding sentences that our own Auditor had passed while its written reason described exactly why they were not supported ("the evidence does not link it to…"). The cause is structural: `partial` is accepted as a pass, and the model's prose reason is never read by code.
+
+**The decision, made on data.** The obvious fix — treat any gap-describing verdict as unsupported — was measured offline first on 480 independently graded sentences. 142 had such a reason; 42% of them were nevertheless fully supported by the grader's judgement, so a blanket rule would have deleted 30% of the report and 16% of its genuinely supported sentences. The narrower rule — only `partial` verdicts whose reason admits a gap fail (`verify/gap_reason.py`, `stage_failed="self_reported_gap"`) — was chosen instead and applied uniformly to the Verifier, Auditor and follow-up.
+
+**The result.** On the re-run sweep, strict independent support rose from 0.741 (163/220) to 0.966 (200/207) with no unsupported sentences, at the cost of 6% fewer cited sentences and a lower Auditor keep rate (0.857 → 0.748); rubric coverage was unchanged at 0.84. It is not a controlled A/B (live web re-fetched, 12 questions), and the regex is a heuristic over model prose that will miss differently-phrased gaps.
+
+**Scope freeze (2026-10-24).** No new features before the 2026-10-31 deadline. The remaining known failures — entity substitution, true-but-irrelevant evidence, ablations, a Firecrawl-backed re-run — are documented in `EVAL.md` rather than patched, because every further heuristic written after reading failure cases makes the headline numbers less honest, not more. The only open task is the one that needs a person: filling in the 37 unlabelled pairs in `eval/gold_labels.csv` to produce the judge–human agreement and false-rejection numbers.

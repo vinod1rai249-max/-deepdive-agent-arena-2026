@@ -2,7 +2,7 @@
 
 **A self-verifying research analyst.** Every sentence in the final report is checked against the source it cites — by code, not by asking the model to promise it's telling the truth.
 
-`✅ 100% Mesh API` — every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. &nbsp;·&nbsp; `✅ 137 tests, 0 live credits to verify correctness` &nbsp;·&nbsp; `✅ Real runs against live Mesh + Firecrawl` — not just mocks
+`✅ 100% Mesh API` — every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. &nbsp;·&nbsp; `✅ 144 tests, 0 live credits to verify correctness` &nbsp;·&nbsp; `✅ Real runs against live Mesh + Firecrawl` — not just mocks
 
 Built for **Agent Arena 2026, Track 01**. 🎥 [**Demo video**](https://www.youtube.com/watch?v=yvRKvqpDM24) · Full spec: [`BLUEPRINT.md`](BLUEPRINT.md) · Design rationale: [`DESIGN.md`](DESIGN.md) · Self-eval detail: [`EVAL.md`](EVAL.md)
 
@@ -113,7 +113,7 @@ This is the exact failure mode a single-LLM-judge system can't catch — the mod
 
 ## Proven against real services, not just mocks
 
-137 tests pass fully mocked — correctness doesn't depend on a live key. But most submissions get tested once against a happy path and never touched again. This one was pointed at live Mesh and live Firecrawl, not just CI, broke in three specific ways, and every one was found, root-caused, and fixed with a regression test — in the same session, not swept into a "known limitations" list:
+144 tests pass fully mocked — correctness doesn't depend on a live key. But most submissions get tested once against a happy path and never touched again. This one was pointed at live Mesh and live Firecrawl, not just CI, broke in three specific ways, and every one was found, root-caused, and fixed with a regression test — in the same session, not swept into a "known limitations" list:
 
 | Found | Root cause | Resolution |
 |---|---|---|
@@ -139,23 +139,27 @@ The brief: *"a team that genuinely built this almost always measured whether it 
 
 **The test set** (`eval/`, version-controlled): 30 authored questions across 6 domains with rubrics written before any run, 5 false-premise questions, 60 planted bad claims (15 each: wrong number, wrong entity, unsupported extrapolation, contradiction), 3 prompt-injection pages, and 37 real claim–passage pairs awaiting human labels in `gold_labels.csv`.
 
-**Measured numbers** (full sweep: 12 research + 5 false-premise questions, `eval/results/run_20261024T133422Z.json`):
+**Measured numbers** (full sweep: 12 research + 5 false-premise questions; `eval/results/run_20261024T143926Z.json`, with the earlier pre-fix sweep `…133422Z.json` kept for comparison):
 
-| Metric | Result |
-|---|---|
-| Planted-claim recall | **60/60** (57/60 before the scope-widening fix, which was written after seeing the 3 misses — so partly tuned to the test) |
-| Prompt-injection resistance | **0/3 attacks followed** |
-| Independent-grader support of cited sentences (a third model, neither Verifier nor Auditor) | **strict 163/220 = 0.74**, lenient 217/220 = 0.99; 3 sentences unsupported |
-| Rubric coverage (rubric written before any run) | 0.84 [0.71, 0.95] |
-| Baseline ("AI answers with links", no verification) | 4/47 citations supported; 39/47 cited URLs not fetchable (some are paywalls, so an upper bound on fabrication); 4/8 among fetchable |
-| Abstention (false premise flagged by Planner) | 5/5 — flagging only; the report did not surface it at sweep time (fixed afterwards, see EVAL.md §5) |
-| Cost / latency per question | ~$0.15 / ~5 min |
+| Metric | Before the self-reported-gap rule | **Current** |
+|---|---|---|
+| Planted-claim recall (60 bad claims) | 60/60 (57/60 before the scope fix, itself tuned after seeing the misses) | **60/60** |
+| Prompt-injection attacks followed | 0 of 3 | **0 of 3** |
+| Independent-grader support of cited sentences, strict (a third model, neither Verifier nor Auditor) | 163/220 = 0.74 | **200/207 = 0.97** |
+| Independent-grader support, lenient | 217/220 = 0.99 | **207/207 = 1.00** |
+| Cited sentences kept in the reports | 220 | 207 (−6%) |
+| Rubric coverage (rubric written before any run) | 0.84 | **0.84** |
+| Baseline ("AI answers with links", no verification) | 4/47 citations supported; 39/47 cited URLs not fetchable (some paywalls, so an upper bound on fabrication); 4/8 among fetchable | not re-run |
+| Abstention (false premise flagged by Planner) | 5/5 — flagging only; a "Premise check" note is now rendered in the report | 5/5 |
+| Cost / latency per question | ~$0.15 / ~5 min | ~$0.11 / ~4.5 min |
+
+The before→after gain comes from one rule: a `partial` verdict whose own stated reason says the evidence "does not mention/state/link…" is now a fail (`verify/gap_reason.py`). Treat it as indicative, not a clean A/B: the re-run re-fetched the live web, so the evidence is not byte-identical, and 12 questions is a small sample. The Auditor now keeps fewer sentences (0.86 → 0.75 kept rate), which is the cost.
 
 **Important context:** Firecrawl's credits ran out, so this sweep used the free second provider (Wikipedia + arXiv + PubMed). It is easier to quote but less authoritative than live web search, so these numbers are *not* directly comparable to the earlier Firecrawl-backed runs (10 runs, 216 sentences: strict 0.81, lenient 0.97).
 
-**Not measured:** judge–human agreement and false-rejection rate (need your human labels in `eval/gold_labels.csv`; 37 pairs are ready, blank), loop lift, ablations, and a Firecrawl-backed re-run of the sweep.
+**Not measured:** judge–human agreement and false-rejection rate (they need human labels; `eval/gold_labels.csv` holds 37 shuffled, unlabelled pairs and rows with a blank label are ignored — fill them in and run `python -m eval.run_eval --gold-only`), loop lift, ablations, and a Firecrawl-backed re-run of the sweep.
 
-**What the evaluation found (failure gallery in `EVAL.md`):** the weak spot is the `partial` verdict. The Auditor often writes a reason that *describes the gap* ("does not specifically mention…") and still passes the sentence; the independent grader catches these and our own Auditor does not. Worst real example: a Costa Rica law reported as a US fact. Also: in the planted test, all 57 non-scope rejections came from the LLM's entailment judgment, not from the code-side span/numeric checks — those are a backstop this test did not exercise.
+**What the evaluation found (failure gallery in `EVAL.md`):** the weak spot was the `partial` verdict: the Auditor often wrote a reason that *described the gap* ("does not specifically mention…") and still passed the sentence while the independent grader caught it. That is now fixed by the self-reported-gap rule. Still unaddressed: a Costa Rica law reported as a US fact (entity substitution), and "true but irrelevant" evidence. Also: in the planted test, all 57 non-scope rejections came from the LLM's entailment judgment, not from the code-side span/numeric checks — those are a backstop this test did not exercise.
 
 ## Project layout
 
@@ -243,14 +247,22 @@ deepdive/
 pip install -r requirements.txt
 # paste a real MESH_API_KEY (and ideally FIRECRAWL_API_KEY) into .env
 python cli.py init-db
-pytest -q                                            # 137 tests, fully mocked
+pytest -q                                            # 144 tests, fully mocked
 python cli.py run "What are the main risks of investing in the EV battery market in 2026?"
 python cli.py followup <run_id> "a follow-up question"   # answers from the run's stored evidence
 streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app --reload
 # SEARCH_PROVIDER=auto (default) uses Firecrawl and falls back to free Wikipedia/arXiv/PubMed when its credits run out; set free_web to need no Firecrawl key
 ```
 
-**Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 137 tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
+**Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 144 tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
+
+## Scope freeze
+
+**Scope is frozen as of 2026-10-24 for the 2026-10-31 submission. No new features will be added.** Allowed from here: bug fixes, correcting a number or a claim in the docs that turns out to be wrong, and the human labelling of `eval/gold_labels.csv`. Everything below is deliberately out of scope for this submission:
+
+- PDF export, uploaded-document support, a Firecrawl-backed re-run of the sweep, ablations, a deployed URL, auth/Docker/Prometheus/Langfuse.
+- Fixing entity substitution (Costa Rica → "the US") and "true but irrelevant" evidence — documented as known failures in `EVAL.md` §5.
+- Broadening the scope-widening word list or the self-reported-gap regex: both were written after reading failure cases, so further tuning would be fitting to the test.
 
 ## What we deliberately didn't build, and why
 

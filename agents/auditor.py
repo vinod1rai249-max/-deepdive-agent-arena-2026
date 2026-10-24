@@ -26,6 +26,7 @@ from app.deps import Deps
 from app.state import ClaimState, PassageState, ReportSentenceState
 from core.guardrails import wrap_untrusted
 from core.logging import get_logger
+from verify.gap_reason import reason_admits_gap
 from verify.numeric_check import numbers_consistent
 from verify.scope_check import scope_consistent
 from verify.span_match import span_exists
@@ -54,7 +55,10 @@ def _passes(judgment: SpanJudgment, evidence_text: str, sentence_text: str) -> b
     span_ok = span_exists(judgment.evidence_span, evidence_text)
     numbers_ok, _missing = numbers_consistent(sentence_text, judgment.evidence_span)
     scope_ok, _missing_scope = scope_consistent(sentence_text, evidence_text)
-    return span_ok and numbers_ok and scope_ok and judgment.entailment in ("supported", "partial")
+    return (
+        span_ok and numbers_ok and scope_ok and judgment.entailment in ("supported", "partial")
+        and not reason_admits_gap(judgment.entailment, judgment.reason)
+    )
 
 
 async def audit_all(

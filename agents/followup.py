@@ -26,6 +26,7 @@ from app.deps import Deps
 from core.guardrails import wrap_untrusted
 from core.logging import get_logger
 from core.relevance import top_k
+from verify.gap_reason import reason_admits_gap
 from verify.numeric_check import numbers_consistent
 from verify.scope_check import scope_consistent
 from verify.span_match import span_exists
@@ -54,6 +55,7 @@ async def _verify_sentence(deps: Deps, run_id: str, text: str, passages: list[di
             and span_exists(judgment.evidence_span, passage["text"])
             and numbers_ok
             and scope_ok
+            and not reason_admits_gap(judgment.entailment, judgment.reason)
         ):
             return passage
     return None

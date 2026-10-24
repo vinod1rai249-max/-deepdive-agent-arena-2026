@@ -4,6 +4,8 @@
 > Work the **Core path** (§17) in order. Each phase ends with: tests green, `python -m compileall .` green, a short report (done / verified / not verified), and a commit. Stop for review between phases.
 > This version supersedes the original draft blueprint. Changes from that draft are called out inline as **[REVISED]**; rationale for each lives in `DESIGN.md`.
 
+> **SCOPE FROZEN — 2026-10-24 (submission 2026-10-31).** No new features. Allowed: bug fixes, correcting docs/numbers that turn out to be wrong, and human labelling of `eval/gold_labels.csv`. Out of scope and not to be added: PDF export, uploaded documents, ablations, a Firecrawl-backed re-run, Docker/auth/metrics, further tuning of `verify/scope_check.py` or `verify/gap_reason.py`. See DESIGN.md §20 and the README "Scope freeze".
+
 ---
 
 ## 0. Mission
@@ -120,6 +122,7 @@ For each claim, stages run in order; first failure decides unless re-attribution
 3. **Entailment**: must be `supported` (or `partial` → claim marked partial, lower confidence, rendered with a qualifier).
 4. **Numeric/entity consistency (code)** `verify/numeric_check.py`: numbers, percentages, currency, years/dates, capitalized entities extracted from the claim must appear in the span after normalization. Fail → `stage_failed="numeric_mismatch"`.
 5. **Re-attribution (code + LLM)** `verify/reattribute.py`: on stage 2–4 failure, try top-k other passages for the same sub-question (ranked via `core/relevance.py.rank()` — same scorer as stage 0). Pass → re-cite, `outcome="re_cited"`. Else `outcome="rejected"` or `"unverified"`.
+5b. **Scope & self-reported-gap checks (code)** `verify/scope_check.py`, `verify/gap_reason.py` `[ADDED after evaluation — DESIGN.md §18, §20]`: a claim may not use a scope-widening word (overall, entire, national, …) absent from the cited passage (`stage_failed="scope_widening"`), and a `partial` verdict whose own reason says the evidence "does not mention/state/link …" fails (`"self_reported_gap"`). Also applied by the Auditor and the follow-up agent.
 6. **Confidence (code)** `verify/confidence.py`: f(verdict, source tier, count of independent supporting sources, source age vs `time_scope`). Logic readable in code, not a prompt.
 
 Every claim writes a `verdicts` row: `stage_reached`, `stage_failed`, `outcome`, `reason`, `evidence_span`, `passage_id`, `model`, `prompt_version`, `latency_ms`.

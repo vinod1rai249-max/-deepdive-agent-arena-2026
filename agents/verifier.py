@@ -26,6 +26,7 @@ from core.relevance import passes_prefilter, score as relevance_score
 from retrieval.dates import parse_published_date
 from verify.confidence import score_confidence
 from verify.numeric_check import numbers_consistent
+from verify.gap_reason import reason_admits_gap
 from verify.reattribute import candidate_passages
 from verify.scope_check import scope_consistent
 from verify.span_match import span_exists
@@ -135,6 +136,8 @@ async def _verify_one(
 
     span_ok, numbers_ok = _passes_stage2_and_4(judgment, passage["text"], claim["text"])
     passed = span_ok and numbers_ok and judgment.entailment in ("supported", "partial")
+    self_reported_gap = reason_admits_gap(judgment.entailment, judgment.reason)  # verify/gap_reason.py
+    passed = passed and not self_reported_gap
 
     if passed:
         outcome = "verified" if judgment.entailment == "supported" else "partial"
@@ -146,6 +149,8 @@ async def _verify_one(
         stage_failed = "entailment"
     elif not span_ok:
         stage_failed = "span_missing"
+    elif self_reported_gap:
+        stage_failed = "self_reported_gap"
     elif not scope_consistent(claim["text"], passage["text"])[0]:
         stage_failed = "scope_widening"
     else:
@@ -158,7 +163,10 @@ async def _verify_one(
         if cand_judgment is None:
             continue
         cand_span_ok, cand_numbers_ok = _passes_stage2_and_4(cand_judgment, candidate["text"], claim["text"])
-        if cand_span_ok and cand_numbers_ok and cand_judgment.entailment in ("supported", "partial"):
+        if (
+            cand_span_ok and cand_numbers_ok and cand_judgment.entailment in ("supported", "partial")
+            and not reason_admits_gap(cand_judgment.entailment, cand_judgment.reason)
+        ):
             confidence = _confidence_for(cand_judgment.entailment, candidate, source_by_id, time_scope)
             verdict = _make_verdict(claim, "confidence", None, "re_cited", cand_judgment, candidate["id"], cand_judgment.reason, confidence, True)
             return {**claim, "status": "re_cited", "passage_id": candidate["id"]}, verdict
