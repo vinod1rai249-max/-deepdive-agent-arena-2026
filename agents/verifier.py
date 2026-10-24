@@ -27,6 +27,7 @@ from retrieval.dates import parse_published_date
 from verify.confidence import score_confidence
 from verify.numeric_check import numbers_consistent
 from verify.reattribute import candidate_passages
+from verify.scope_check import scope_consistent
 from verify.span_match import span_exists
 
 logger = get_logger(__name__)
@@ -99,7 +100,10 @@ async def _judge(deps: Deps, run_id: str, claim_text: str, passage_text: str) ->
 def _passes_stage2_and_4(judgment: SpanJudgment, passage_text: str, claim_text: str) -> tuple[bool, bool]:
     span_ok = span_exists(judgment.evidence_span, passage_text)
     numbers_ok, _missing = numbers_consistent(claim_text, judgment.evidence_span)
-    return span_ok, numbers_ok
+    # Stage 4b: scope-widening words must be present in the passage (verify/scope_check.py).
+    # Folded into `numbers_ok` so every caller treats it as the same "consistency" gate.
+    scope_ok, _missing_scope = scope_consistent(claim_text, passage_text)
+    return span_ok, numbers_ok and scope_ok
 
 
 async def _verify_one(
@@ -138,10 +142,14 @@ async def _verify_one(
         verdict = _make_verdict(claim, "confidence", None, outcome, judgment, passage["id"], judgment.reason, confidence, True)
         return {**claim, "status": outcome}, verdict
 
-    stage_failed = (
-        "entailment" if judgment.entailment in ("unsupported", "contradicted")
-        else ("span_missing" if not span_ok else "numeric_mismatch")
-    )
+    if judgment.entailment in ("unsupported", "contradicted"):
+        stage_failed = "entailment"
+    elif not span_ok:
+        stage_failed = "span_missing"
+    elif not scope_consistent(claim["text"], passage["text"])[0]:
+        stage_failed = "scope_widening"
+    else:
+        stage_failed = "numeric_mismatch"
 
     # Stage 5: re-attribution — try sibling passages for this sub-question
     # before giving up on an otherwise-plausible claim (DESIGN.md §5).

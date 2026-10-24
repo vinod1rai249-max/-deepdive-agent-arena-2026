@@ -64,7 +64,7 @@ async def test_research_lifecycle_through_the_api(tmp_path):
         mesh_api_key="rsk_test",
         database_url=f"sqlite:///{tmp_path / 'test.db'}",
         checkpoint_db_path=str(tmp_path / "checkpoints.db"),
-        firecrawl_api_key=None,
+        firecrawl_api_key=None, search_provider="null",
         deadline_seconds_per_run=600,
         llm_cache_dir=str(tmp_path / "llm_cache"),  # isolated — never share the real ./.cache/llm across tests
     )
@@ -155,7 +155,7 @@ async def test_override_endpoint_promotes_a_claim_and_resynthesizes(tmp_path):
         mesh_api_key="rsk_test",
         database_url=f"sqlite:///{tmp_path / 'test2.db'}",
         checkpoint_db_path=str(tmp_path / "checkpoints2.db"),
-        firecrawl_api_key=None,
+        firecrawl_api_key=None, search_provider="null",
         llm_cache_dir=str(tmp_path / "llm_cache2"),
     )
     app.state.repo = repo

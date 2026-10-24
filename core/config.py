@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     mesh_base_url: str = "https://api.meshapi.ai/v1"
 
     firecrawl_api_key: str | None = None
+    # "auto": Firecrawl if a key is set, falling back to the free provider when its credits run out;
+    # "firecrawl": Firecrawl only; "free_web": Wikipedia/arXiv/PubMed + safe fetch, no key;
+    # "null": returns nothing (tests).
+    search_provider: str = "auto"
 
     database_url: str = "sqlite:///./deepdive.db"
     checkpoint_db_path: str = "./checkpoints.db"

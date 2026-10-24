@@ -106,7 +106,7 @@ async def test_promoted_claim_reaches_the_report_after_resynthesis(tmp_path):
 
     settings = Settings(
         mesh_api_key="rsk_test", database_url=f"sqlite:///{db_path}",
-        llm_cache_dir=str(tmp_path / "llm_cache"), firecrawl_api_key=None,
+        llm_cache_dir=str(tmp_path / "llm_cache"), firecrawl_api_key=None, search_provider="null",
     )
 
     # A human reviews it and disagrees with the AI's rejection.

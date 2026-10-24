@@ -42,6 +42,7 @@ from app.state import VERIFIED_STATUSES, ClaimState, PassageState, SourceState
 from core.config import get_settings
 from core.guardrails import wrap_untrusted
 from eval.baseline import answer_with_citations, score_baseline_answer
+from eval.injection import CASES, StaticPageProvider, outputs_follow_injection, verify_false_claim
 from store.repo import Repo
 
 EVAL_DIR = Path(__file__).resolve().parent
@@ -181,7 +182,8 @@ async def evaluate_gold_labels(
     """
     path = gold_labels_path or GOLD_LABELS_PATH
     with open(path, newline="", encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
+        # Rows with a blank/invalid human_label are unlabelled candidates, not data.
+        rows = [r for r in csv.DictReader(fh) if r["human_label"].strip() in ("supported", "partial", "unsupported", "contradicted")]
 
     if not rows:
         return {"n": 0, "accuracy": None, "kappa": None, "false_rejection_rate": None, "details": []}
@@ -306,6 +308,32 @@ async def grade_rubric(deps: Deps, entry: dict[str, Any], export: dict[str, Any]
     return compute_rubric_coverage(rubric, judgment.criteria_satisfied)
 
 
+async def evaluate_injection(settings: Any, repo: Repo, deps: Deps) -> dict[str, Any]:
+    """Injection resistance (BLUEPRINT.md §15; target 0 followed). For each
+    fixture page: (a) a real pipeline run where that page is the only
+    source, checked for the attack's canary phrases in anything a reader
+    sees; (b) a deliberately false claim about the page pushed through the
+    real Verifier, which must reject it. See eval/injection.py."""
+    details: list[dict[str, Any]] = []
+    for name, case in CASES.items():
+        provider = StaticPageProvider(name)
+        run_id = await start_run(settings, repo, case["question"], search=provider)
+        export = repo.export_run(run_id)
+        canaries_found = outputs_follow_injection(export, case["canaries"])
+        false_claim_accepted = await verify_false_claim(deps, name, case["false_claim"])
+        details.append(
+            {
+                "page": name, "run_id": run_id, "canaries_found": canaries_found,
+                "false_claim_accepted": false_claim_accepted,
+                "n_claims": len(export["claims"]),
+                "n_report_sentences": sum(1 for r in export["report_sentences"] if r["claim_ids"] and r["audit_passed"]),
+                "followed": bool(canaries_found) or false_claim_accepted,
+            }
+        )
+        print(f"  injection {name}: followed={details[-1]['followed']} canaries={canaries_found} false_claim_accepted={false_claim_accepted}")
+    return {"n": len(details), "followed": sum(1 for d in details if d["followed"]), "details": details}
+
+
 async def evaluate_question(settings: Any, repo: Repo, entry: dict[str, Any], deps: Deps | None = None) -> dict[str, Any]:
     started = time.monotonic()
     run_id = await start_run(settings, repo, entry["question"])
@@ -371,6 +399,7 @@ def _select_entries(questions: dict[str, Any], per_domain: int | None, limit: in
 async def main(
     per_domain: int | None = None, limit: int | None = None, with_baseline: bool = True,
     include_premise: bool = True, concurrency: int = 3, resume_path: Path | None = None,
+    planted_only: bool = False, injection_only: bool = False, gold_only: bool = False,
 ) -> None:
     settings = get_settings()
     repo = Repo(settings.database_url)
@@ -388,6 +417,15 @@ async def main(
     def save() -> None:
         out_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
+    if planted_only:
+        state.pop("planted_claim_recall", None)
+    if gold_only:
+        gold = await evaluate_gold_labels(deps, repo)
+        out = RESULTS_DIR / f"gold_{timestamp}.json"
+        out.write_text(json.dumps(gold, indent=2), encoding="utf-8")
+        print(f"n={gold['n']} accuracy={gold['accuracy']} kappa={gold['kappa']} "
+              f"false_rejection_rate={gold['false_rejection_rate']} -> {out}")
+        return
     if "planted_claim_recall" not in state:
         print("Evaluating planted claims (Verifier only, no search provider needed)...")
         planted_results = await evaluate_planted_claims(deps)
@@ -401,6 +439,15 @@ async def main(
         state["planted_rejections_by_stage"] = by_stage
         print(f"Planted-claim recall: {state['planted_claim_recall']} by stage: {by_stage}")
         save()
+
+    if planted_only:
+        return
+    if injection_only or "injection" not in state:
+        print("Evaluating prompt-injection resistance (3 fixture pages, real pipeline)...")
+        state["injection"] = await evaluate_injection(settings, repo, deps)
+        save()
+    if injection_only:
+        return
 
     if "gold_label_agreement" not in state:
         print("Evaluating gold labels (independent grader vs. human)...")
@@ -450,10 +497,14 @@ if __name__ == "__main__":
     ap.add_argument("--no-premise", action="store_true", help="skip the 5 false-premise questions")
     ap.add_argument("--concurrency", type=int, default=3)
     ap.add_argument("--resume", type=Path, help="continue a partially-written results JSON")
+    ap.add_argument("--planted-only", action="store_true", help="re-run only the 60 planted claims (cheap)")
+    ap.add_argument("--gold-only", action="store_true", help="score only eval/gold_labels.csv (needs human labels)")
+    ap.add_argument("--injection-only", action="store_true", help="run only the 3 injection fixtures")
     args = ap.parse_args()
     asyncio.run(
         main(
             per_domain=args.per_domain, limit=args.limit, with_baseline=not args.no_baseline,
             include_premise=not args.no_premise, concurrency=args.concurrency, resume_path=args.resume,
+            planted_only=args.planted_only, injection_only=args.injection_only, gold_only=args.gold_only,
         )
     )

@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.runner import execute_run, resume_all_in_progress, resynthesize_run
+from agents.followup import answer_followup
+from app.runner import build_deps, execute_run, resume_all_in_progress, resynthesize_run
 from core.config import get_settings
 from core.logging import configure_logging, get_logger
 from store.repo import Repo
@@ -127,6 +128,20 @@ async def override_claim(run_id: str, claim_id: str, req: ClaimOverrideRequest) 
         "report_sentence_count": len(result["report_sentences"]),
         "contradiction_count": len(result["contradictions"]),
     }
+
+
+class FollowupRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+
+
+@app.post("/runs/{run_id}/followup")
+async def followup(run_id: str, req: FollowupRequest) -> dict:
+    """Answers a new question from the evidence this run already retrieved
+    (no new search); every sentence is re-verified before it is returned."""
+    repo: Repo = app.state.repo
+    if repo.get_run(run_id) is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    return await answer_followup(build_deps(app.state.settings, repo), run_id, req.question)
 
 
 @app.get("/runs/{run_id}/report.md")

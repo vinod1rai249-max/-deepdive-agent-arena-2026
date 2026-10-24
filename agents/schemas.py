@@ -85,3 +85,15 @@ class ContradictionPair(BaseModel):
 
 class ContradictionCheckOutput(BaseModel):
     contradictions: list[ContradictionPair] = Field(default_factory=list)
+
+
+class FollowupSentence(BaseModel):
+    """Index-based citing again (BLUEPRINT.md §2.4): the model points at small
+    per-call passage numbers, never types a source URL."""
+
+    text: str
+    passage_indices: list[int] = Field(min_length=1)
+
+
+class FollowupOutput(BaseModel):
+    sentences: list[FollowupSentence] = Field(default_factory=list)

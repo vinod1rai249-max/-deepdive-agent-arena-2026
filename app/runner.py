@@ -24,21 +24,42 @@ from app.state import VERIFIED_STATUSES, ClaimState, PassageState, SubQuestionSt
 from core.config import Settings
 from core.logging import bind, get_logger
 from llm.client import MeshClient
+from retrieval.fallback_provider import FallbackSearchProvider
 from retrieval.firecrawl_client import FirecrawlProvider
+from retrieval.free_web_provider import FreeWebProvider
+from retrieval.base import SearchProvider
 from retrieval.null_provider import NullSearchProvider
 from store.repo import Repo
 
 logger = get_logger(__name__)
 
 
-def build_deps(settings: Settings, repo: Repo) -> Deps:
-    mesh = MeshClient.from_settings(settings, repo=repo)
+_FREE_WEB: FreeWebProvider | None = None
+
+
+def _free_web() -> FreeWebProvider:
+    global _FREE_WEB
+    if _FREE_WEB is None:
+        _FREE_WEB = FreeWebProvider()
+    return _FREE_WEB
+
+
+def build_search_provider(settings: Settings) -> SearchProvider:
+    mode = settings.search_provider
+    if mode == "null":  # tests only: guarantees no network access
+        return NullSearchProvider()
+    if mode == "free_web":
+        return _free_web()
     if settings.firecrawl_api_key:
-        search = FirecrawlProvider(api_key=settings.firecrawl_api_key)
-    else:
-        logger.warning("no FIRECRAWL_API_KEY configured — running with NullSearchProvider (no real evidence)")
-        search = NullSearchProvider()
-    return Deps(mesh=mesh, search=search, repo=repo, settings=settings)
+        firecrawl = FirecrawlProvider(api_key=settings.firecrawl_api_key)
+        return firecrawl if mode == "firecrawl" else FallbackSearchProvider(firecrawl, _free_web())
+    logger.warning("no FIRECRAWL_API_KEY configured — using the free_web provider (Wikipedia/arXiv/PubMed)")
+    return _free_web()
+
+
+def build_deps(settings: Settings, repo: Repo, search: SearchProvider | None = None) -> Deps:
+    mesh = MeshClient.from_settings(settings, repo=repo)
+    return Deps(mesh=mesh, search=search or build_search_provider(settings), repo=repo, settings=settings)
 
 
 @contextlib.asynccontextmanager
@@ -47,13 +68,15 @@ async def _checkpointer(settings: Settings) -> AsyncIterator[AsyncSqliteSaver]:
         yield saver
 
 
-async def execute_run(settings: Settings, repo: Repo, run_id: str, question: str) -> dict:
+async def execute_run(
+    settings: Settings, repo: Repo, run_id: str, question: str, search: SearchProvider | None = None
+) -> dict:
     """Runs a FRESH graph for an already-created Run row. Used directly by
     `start_run` (CLI) and as the background task behind `POST /research`,
     which creates the Run itself (to return `run_id` immediately) and
     must not have a second Run row created underneath it."""
     bind(run_id=run_id)
-    deps = build_deps(settings, repo)
+    deps = build_deps(settings, repo, search)
     repo.update_run_status(run_id, "in_progress")
 
     async with _checkpointer(settings) as checkpointer:
@@ -69,11 +92,11 @@ async def execute_run(settings: Settings, repo: Repo, run_id: str, question: str
         return result
 
 
-async def start_run(settings: Settings, repo: Repo, question: str) -> str:
+async def start_run(settings: Settings, repo: Repo, question: str, search: SearchProvider | None = None) -> str:
     """CLI convenience: create a Run and execute it immediately."""
-    deps = build_deps(settings, repo)
+    deps = build_deps(settings, repo, search)
     run = repo.create_run(question=question, config_snapshot={"search_provider": deps.search.name})
-    await execute_run(settings, repo, run.id, question)
+    await execute_run(settings, repo, run.id, question, search)
     return run.id
 
 

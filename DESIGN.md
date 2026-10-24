@@ -148,3 +148,15 @@ An external review of the repo against the hackathon brief found five things the
 Also removed: Firecrawl's `check_prompt_injection` flag (a third-party-side classifier; the brief says no third-party tool may make AI calls on our behalf), and the unused `demo_mode` setting.
 
 **Known limitation not fixed:** `Verdict.model` stores the *role* name (`"verifier"`), not the concrete model ID; the concrete model per call is in `llm_calls`. Judge–human agreement is still unmeasured because `eval/gold_labels.csv` needs human labels and we do not fabricate them.
+
+## 19. Audit round 3: closing the evaluation, and what it found
+
+With Firecrawl's credits exhausted until after the deadline, the second `SearchProvider` that BLUEPRINT §10 called for was built (`retrieval/free_web_provider.py`: Wikipedia, arXiv, PubMed, plus a safe plain fetch; `retrieval/fallback_provider.py` switches to it only on a credit-exhaustion error, never on a transient one). The full sweep then ran on it, and the results changed the code:
+
+1. **The `partial` loophole was real and is fixed, with a caveat.** `verify/scope_check.py` requires a scope-widening word in a claim (overall, entire, national, global, every, most, never…) to appear in the cited passage. Planted recall went 57/60 → 60/60. The word list was written after seeing the three misses, so that number is a regression result, not a generalisation claim; applied to 625 real claims it would reject 11 (1.8%), at least one dubiously.
+2. **The abstention metric was hollow.** The Planner flagged all 5 false premises, but nothing in the report told the reader, and two reports never addressed the premise. The flag is now rendered as a deterministic "Premise check" note (it says the premise was not assumed and not established — it does not claim to prove it false).
+3. **Two judges disagree in an informative way.** The independent grader finds ~26% of cited sentences only partly supported, and several that our Auditor passed while its own reason described the gap. A country substitution (Costa Rica → "the US") passed both the entailment judge and the code checks. Unfixed; the proposed fix is in `EVAL.md` §5.
+4. **Follow-up** (`agents/followup.py`) reuses a run's stored passages and re-verifies every answer sentence with the same span/numeric/scope checks; unsupported sentences are dropped and an off-topic question gets an explicit "not in the stored research".
+5. **Injection resistance is now measured** (`eval/injection.py`): each hostile page is the only source of a real run, plus a planted false claim per page. 0/3 followed — a smoke test of our own defence, not an adversarial audit.
+
+Not done: human labels (37 candidate pairs are in `eval/gold_labels.csv`, blank — only a person can fill them), ablations, PDF export, a Firecrawl-backed re-run.

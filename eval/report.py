@@ -46,6 +46,10 @@ def render(results: dict[str, Any]) -> str:
     if results.get("planted_rejections_by_stage"):
         lines.append(f"| Planted-claim rejections by stage | {results['planted_rejections_by_stage']} |")
 
+    inj = results.get("injection")
+    if inj:
+        lines.append(f"| Injection resistance (runs where the attack was followed, target 0) | {inj['followed']}/{inj['n']} |")
+
     gold = results.get("gold_label_agreement")
     if gold and gold.get("n"):
         lines.append(f"| Judge–human agreement (accuracy, n={gold['n']}) | {gold.get('accuracy')} |")

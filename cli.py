@@ -1,5 +1,5 @@
-"""Entrypoints: `init-db`, `run`, `resume`, `export`, `replay`. `eval`
-lands in Phase 6 (BLUEPRINT.md §17)."""
+"""Entrypoints: `init-db`, `run`, `resume`, `followup`, `export`,
+`replay`."""
 
 from __future__ import annotations
 
@@ -7,7 +7,8 @@ import argparse
 import asyncio
 import json
 
-from app.runner import resume_run, start_run
+from agents.followup import answer_followup
+from app.runner import build_deps, resume_run, start_run
 from core.config import get_settings
 from core.logging import configure_logging
 from store.repo import Repo
@@ -52,6 +53,19 @@ async def _resume(run_id: str) -> None:
     _print_result(repo, run_id)
 
 
+async def _followup(run_id: str, question: str) -> None:
+    settings = get_settings()
+    configure_logging(settings.log_level)
+    repo = Repo(settings.database_url)
+    repo.create_all()
+    result = await answer_followup(build_deps(settings, repo), run_id, question)
+    for item in result["answer"]:
+        print(f"- {item['text']}\n    source: {item['citation']['url']}")
+    if result["note"]:
+        print(result["note"])
+    print(f"({result['dropped']} sentence(s) dropped for failing verification)")
+
+
 def export_run(run_id: str, out_path: str) -> None:
     settings = get_settings()
     repo = Repo(settings.database_url)
@@ -86,6 +100,10 @@ def main() -> None:
     resume_parser = sub.add_parser("resume")
     resume_parser.add_argument("run_id")
 
+    followup_parser = sub.add_parser("followup")
+    followup_parser.add_argument("run_id")
+    followup_parser.add_argument("question")
+
     export_parser = sub.add_parser("export")
     export_parser.add_argument("run_id")
     export_parser.add_argument("out_path")
@@ -100,6 +118,8 @@ def main() -> None:
         asyncio.run(_run(args.question))
     elif args.command == "resume":
         asyncio.run(_resume(args.run_id))
+    elif args.command == "followup":
+        asyncio.run(_followup(args.run_id, args.question))
     elif args.command == "export":
         export_run(args.run_id, args.out_path)
     elif args.command == "replay":

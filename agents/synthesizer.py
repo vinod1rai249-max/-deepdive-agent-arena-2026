@@ -50,6 +50,28 @@ def build_gaps_sentences(
         )
         order += 1
 
+    # The Planner flags questions that assume something that may be false
+    # ("Since X happened, why..."). Surface that in the report itself — the
+    # evaluation found the flag was set 5/5 but never shown to the reader.
+    # Wording is deliberately modest: it says the premise was NOT assumed and
+    # was not established, not that the premise is false.
+    claims_by_subq: dict[str, int] = {}
+    for c in all_claims:
+        if c["status"] in ("verified", "partial", "re_cited"):
+            claims_by_subq[c["subq_id"]] = claims_by_subq.get(c["subq_id"], 0) + 1
+    for sq in sub_questions:
+        if sq.get("premise_flag"):
+            n_verified = claims_by_subq.get(sq["id"], 0)
+            evidence = (
+                f"{n_verified} verified claim(s) bear on it below" if n_verified
+                else "no verified evidence either way was found"
+            )
+            add(
+                f"Premise check: the question appears to assume something that may not be true. "
+                f"The research did not take it for granted and instead asked \"{sq['text']}\" — {evidence}. "
+                f"Read the findings below as answers to the facts that could be verified, not as confirmation of the premise."
+            )
+
     for sq in sub_questions:
         cov = coverage.get(sq["id"])
         if cov is not None and cov < THIN_COVERAGE_THRESHOLD:

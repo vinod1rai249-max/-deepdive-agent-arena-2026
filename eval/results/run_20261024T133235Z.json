@@ -1,0 +1,440 @@
+{
+  "timestamp": "20261024T133235Z",
+  "questions": [],
+  "baseline": [],
+  "planted_claim_recall": {
+    "overall": 1.0,
+    "by_type": {
+      "wrong_number": 1.0,
+      "wrong_entity": 1.0,
+      "unsupported_extrapolation": 1.0,
+      "contradiction": 1.0
+    }
+  },
+  "planted_claim_details": [
+    {
+      "id": "wn-01",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-02",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-03",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-04",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-05",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-06",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-07",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-08",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-09",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-10",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-11",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-12",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-13",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-14",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "wn-15",
+      "type": "wrong_number",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-01",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-02",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-03",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-04",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-05",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-06",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-07",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-08",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-09",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-10",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-11",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-12",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-13",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-14",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "we-15",
+      "type": "wrong_entity",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-01",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "unverified",
+      "stage_failed": "scope_widening"
+    },
+    {
+      "id": "ue-02",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-03",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "unverified",
+      "stage_failed": "scope_widening"
+    },
+    {
+      "id": "ue-04",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "unverified",
+      "stage_failed": "scope_widening"
+    },
+    {
+      "id": "ue-05",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-06",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-07",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-08",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-09",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-10",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-11",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-12",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-13",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-14",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ue-15",
+      "type": "unsupported_extrapolation",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-01",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-02",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-03",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-04",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-05",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-06",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-07",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-08",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-09",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-10",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-11",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-12",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-13",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-14",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    },
+    {
+      "id": "ct-15",
+      "type": "contradiction",
+      "rejected": true,
+      "outcome": "rejected",
+      "stage_failed": "entailment"
+    }
+  ],
+  "planted_rejections_by_stage": {
+    "entailment": 57,
+    "scope_widening": 3
+  }
+}

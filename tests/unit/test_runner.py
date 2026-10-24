@@ -71,7 +71,7 @@ async def test_resume_does_not_rerun_the_completed_planner_node(tmp_path, monkey
         mesh_api_key="rsk_test",
         database_url=f"sqlite:///{db_path}",
         checkpoint_db_path=str(tmp_path / "checkpoints.db"),
-        firecrawl_api_key=None,
+        firecrawl_api_key=None, search_provider="null",
         deadline_seconds_per_run=600,
         llm_cache_dir=str(tmp_path / "llm_cache"),  # isolated — never share the real ./.cache/llm across tests
     )

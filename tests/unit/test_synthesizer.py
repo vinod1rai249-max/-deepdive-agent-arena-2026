@@ -94,3 +94,13 @@ def test_gaps_section_lists_excluded_claims_without_citations():
     assert "25%" in out[0]["text"]
     assert "Fabricated merger." in out[1]["text"] and "entailment" in out[1]["text"]
     assert not any("Verified fact." in s["text"] for s in out)
+
+
+def test_premise_flag_is_surfaced_in_the_gaps_section():
+    from agents.synthesizer import build_gaps_sentences
+
+    subq = {"id": "s1", "text": "Did the US ban gasoline cars in 2024?", "acceptance_criteria": ["a"], "time_scope": None, "premise_flag": True}
+    out = build_gaps_sentences([subq], [], [], {"s1": 1.0}, start_order=0)
+    assert len(out) == 1 and out[0]["text"].startswith("Premise check:")
+    assert "may not be true" in out[0]["text"] and "no verified evidence either way" in out[0]["text"]
+    assert out[0]["claim_ids"] == []
