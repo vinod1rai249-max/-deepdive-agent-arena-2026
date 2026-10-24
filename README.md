@@ -1,24 +1,95 @@
+<div align="center">
+
 # 🔎 DeepDive
 
-**A self-verifying research analyst.** Every sentence in the final report is checked against the source it cites — by code, not by asking the model to promise it's telling the truth.
+### A self-verifying research analyst
 
-`✅ 100% Mesh API` — every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. &nbsp;·&nbsp; `✅ 144 tests, 0 live credits to verify correctness` &nbsp;·&nbsp; `✅ Real runs against live Mesh + Firecrawl` — not just mocks
+**Every sentence in the final report is checked against the source it cites — by code, not by asking the model to promise it's telling the truth.**
 
-Built for **Agent Arena 2026, Track 01**. 🎥 [**Demo video**](https://www.youtube.com/watch?v=yvRKvqpDM24) · Full spec: [`BLUEPRINT.md`](BLUEPRINT.md) · Design rationale: [`DESIGN.md`](DESIGN.md) · Self-eval detail: [`EVAL.md`](EVAL.md)
+<br/>
+
+![Agent Arena 2026](https://img.shields.io/badge/Agent%20Arena-2026%20%C2%B7%20Track%2001-4F46E5?style=for-the-badge)
+![Mesh API](https://img.shields.io/badge/LLM%20gateway-100%25%20Mesh%20API-0EA5E9?style=for-the-badge)
+![Tests](https://img.shields.io/badge/tests-144%20passing-22C55E?style=for-the-badge)
+
+![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)
+
+<br/>
+
+🎥 [**Demo video**](https://www.youtube.com/watch?v=yvRKvqpDM24) &nbsp;·&nbsp; 📐 [`BLUEPRINT.md`](BLUEPRINT.md) *(full spec)* &nbsp;·&nbsp; 🧭 [`DESIGN.md`](DESIGN.md) *(design rationale)* &nbsp;·&nbsp; 📊 [`EVAL.md`](EVAL.md) *(self-eval detail)*
+
+Built for **Agent Arena 2026, Track 01**.
+
+</div>
+
+<br/>
+
+| ✅ **100% Mesh API** | ✅ **144 tests, 0 live credits to verify correctness** | ✅ **Real runs against live Mesh + Firecrawl** |
+|:---:|:---:|:---:|
+| Every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. | Fully mocked suite — correctness doesn't depend on a live key. | Not just mocks. |
+
+<br/>
+
+### 🏆 Scoreboard
+
+*(every figure below is detailed, with caveats, in [Self-evaluation](#self-evaluation) and [`EVAL.md`](EVAL.md))*
+
+| 🎯 Planted bad claims rejected | 🛡️ Injection attacks followed | 🔬 Independent-grader support (strict) | 📋 Rubric coverage | 🧪 Tests |
+|:---:|:---:|:---:|:---:|:---:|
+| **60 / 60** | **0 / 3** | **200 / 207 = 0.97** | **0.84** | **144** |
+
+<br/>
+
+<details open>
+<summary><b>📑 Contents</b></summary>
+
+- [TL;DR](#tldr)
+- [The problem this is built against](#the-problem-this-is-built-against)
+- [At a glance](#at-a-glance)
+- [How the agents cooperate](#how-the-agents-cooperate)
+- [Key design decisions](#key-design-decisions)
+- [Bonus coverage](#bonus-coverage)
+- [Point to a rejected claim](#point-to-a-rejected-claim)
+- [Proven against real services, not just mocks](#proven-against-real-services)
+- [Self-evaluation — test set and results](#self-evaluation)
+- [Project layout](#project-layout)
+- [Quickstart](#quickstart)
+- [Scope freeze](#scope-freeze)
+- [What we deliberately didn't build, and why](#what-we-deliberately-didnt-build)
+- [The docs, and why they're separate](#the-docs)
+- [What's intentionally not here](#whats-intentionally-not-here)
+
+</details>
 
 ---
 
-## TL;DR
+<a id="tldr"></a>
+
+## ⚡ TL;DR
 
 - **Citations are structural, not prompted.** The model never types a real ID or URL for a citation — it's resolved via a database foreign-key chain. A prompt injection or a confident hallucination can't forge a source; there's no field for it to write one into.
 - **Verification is two layers, not one.** An LLM quotes the exact span it's relying on; code then independently confirms that span actually exists in the stored text and that the numbers match. The LLM can lie about entailment — it's much harder to fabricate a verbatim quote that also survives a fuzzy-match against real text it never saw.
-- **This isn't a demo that only works on the happy path.** It's been run against live Mesh and live Firecrawl today, found three real bugs doing it, fixed all three, and kept working through an actual mid-run server crash — see [§ Proven against real services](#proven-against-real-services-not-just-mocks).
+- **This isn't a demo that only works on the happy path.** It's been run against live Mesh and live Firecrawl today, found three real bugs doing it, fixed all three, and kept working through an actual mid-run server crash — see [§ Proven against real services](#proven-against-real-services).
 
-## The problem this is built against
+---
 
-The brief's own framing: *"Tools that produce cited reports from one question already exist. Their well-known weakness is trust: they cite sources, but the cited source often does not actually support the sentence attached to it."* That's the specific failure mode DeepDive is built to make structurally hard, not just less likely. Not a search wrapper, not a single long prompt — a graph of distinct agents where the grounding guarantee lives in code that runs regardless of what any one model call decides to do.
+<a id="the-problem-this-is-built-against"></a>
 
-## At a glance
+## 🎯 The problem this is built against
+
+> The brief's own framing: *"Tools that produce cited reports from one question already exist. Their well-known weakness is trust: they cite sources, but the cited source often does not actually support the sentence attached to it."*
+
+That's the specific failure mode DeepDive is built to make structurally hard, not just less likely. Not a search wrapper, not a single long prompt — a graph of distinct agents where the grounding guarantee lives in code that runs regardless of what any one model call decides to do.
+
+---
+
+<a id="at-a-glance"></a>
+
+## 👀 At a glance
 
 | Claim | Where to verify it |
 |---|---|
@@ -30,7 +101,11 @@ The brief's own framing: *"Tools that produce cited reports from one question al
 | Self-eval has no fabricated numbers | `EVAL.md` + `eval/results/*.json` — real numbers where measured, "not measured" where not |
 | Report says what it could not verify | `agents/synthesizer.py::build_gaps_sentences` — deterministic "Gaps / Unverified" section, no LLM |
 
-## How the agents cooperate
+---
+
+<a id="how-the-agents-cooperate"></a>
+
+## 🤝 How the agents cooperate
 
 ```mermaid
 flowchart TD
@@ -72,22 +147,28 @@ flowchart TD
     class Search,Trail store;
 ```
 
-*(Renders natively on GitHub. If your viewer doesn't support Mermaid, the plain-text version is in `BLUEPRINT.md` §4.)*
+<sub>*(Renders natively on GitHub. If your viewer doesn't support Mermaid, the plain-text version is in `BLUEPRINT.md` §4.)*</sub>
+
+<br/>
 
 | Agent | Job | Model role | What makes it distinct |
 |---|---|---|---|
-| **Planner** | Splits the question into 3–7 sub-questions with acceptance criteria; flags a false/loaded premise | `planner` | Only agent that can set `premise_flag` |
-| **Researcher** | Generates search queries, fetches real web content (Firecrawl, falling back to free Wikipedia/arXiv/PubMed when credits run out), runs concurrently across sub-questions | `cheap` (query-gen) | Only agent that touches the network |
-| **Evidence Curator** | Dedupes near-identical sources, chunks into passages | *none — deterministic code* | The one pipeline stage with zero LLM calls |
-| **Drafter** | Extracts atomic claims from passages, one fact per claim | `drafter` | Cites by per-call index only, never a real ID |
-| **Claim Verifier** | Independently checks each claim against its cited source: LLM quotes a span; code checks span exists, numbers match, scope not widened, no self-reported gap | `verifier` | The only agent whose output is cross-checked by code, not just read |
-| **Contradiction Checker** | Flags verified claims that genuinely disagree | `cheap` | Never resolves a disagreement — always keeps both |
-| **Synthesizer** | Writes report sentences from verified claims only; appends a deterministic "Gaps / Unverified" section and a premise-check note | `synth` | Composed per sub-question, so context never grows unbounded |
-| **Report Auditor** | Independently re-checks every synthesized sentence | `auditor` | **Never shares a model with `verifier`, even on fallback** — enforced by a test |
-| **Follow-up agent** | Answers a new question from a finished run's stored passages (no new search); drops any sentence that fails the Verifier's checks | `synth` + `verifier` | Reuses earlier research instead of re-searching |
-| **Human Reviewer** | Optional: promotes or confirms a rejected claim | *none — a person* | Never mutates the AI's original verdict; additive only |
+| 🧭 **Planner** | Splits the question into 3–7 sub-questions with acceptance criteria; flags a false/loaded premise | `planner` | Only agent that can set `premise_flag` |
+| 🌐 **Researcher** | Generates search queries, fetches real web content (Firecrawl, falling back to free Wikipedia/arXiv/PubMed when credits run out), runs concurrently across sub-questions | `cheap` (query-gen) | Only agent that touches the network |
+| 🧹 **Evidence Curator** | Dedupes near-identical sources, chunks into passages | *none — deterministic code* | The one pipeline stage with zero LLM calls |
+| ✍️ **Drafter** | Extracts atomic claims from passages, one fact per claim | `drafter` | Cites by per-call index only, never a real ID |
+| 🔎 **Claim Verifier** | Independently checks each claim against its cited source: LLM quotes a span; code checks span exists, numbers match, scope not widened, no self-reported gap | `verifier` | The only agent whose output is cross-checked by code, not just read |
+| ⚖️ **Contradiction Checker** | Flags verified claims that genuinely disagree | `cheap` | Never resolves a disagreement — always keeps both |
+| 📝 **Synthesizer** | Writes report sentences from verified claims only; appends a deterministic "Gaps / Unverified" section and a premise-check note | `synth` | Composed per sub-question, so context never grows unbounded |
+| 🛡️ **Report Auditor** | Independently re-checks every synthesized sentence | `auditor` | **Never shares a model with `verifier`, even on fallback** — enforced by a test |
+| 💬 **Follow-up agent** | Answers a new question from a finished run's stored passages (no new search); drops any sentence that fails the Verifier's checks | `synth` + `verifier` | Reuses earlier research instead of re-searching |
+| 🧑 **Human Reviewer** | Optional: promotes or confirms a rejected claim | *none — a person* | Never mutates the AI's original verdict; additive only |
 
-## Key design decisions
+---
+
+<a id="key-design-decisions"></a>
+
+## 🧠 Key design decisions
 
 Full rationale for each (alternatives considered, what was rejected, and why) is in `DESIGN.md` — this is the short version:
 
@@ -98,7 +179,11 @@ Full rationale for each (alternatives considered, what was rejected, and why) is
 5. **LangGraph over a custom orchestrator, CrewAI, or AutoGen**, specifically because the verification loop-back (`coverage < τ → re-research`) needed to be a first-class, inspectable graph edge, not a hand-rolled retry wrapper — and because its checkpointer gives crash-resume almost for free. `DESIGN.md` §2, §14.
 6. **The one human-in-the-loop point kept is additive, not a gate.** A human can promote a rejected claim, but it never mutates the original AI verdict (a separate `HumanReview` row) and never bypasses the Auditor — a promoted claim still has to survive the same independent check every other sentence does. Every other candidate HITL point considered (pre-publish approval, premise-flag confirmation) was deliberately rejected as adding process without adding information the trail doesn't already surface. `DESIGN.md` §15.
 
-## Bonus coverage (brief's "Highlighted Bonus" items)
+---
+
+<a id="bonus-coverage"></a>
+
+## 🎁 Bonus coverage (brief's "Highlighted Bonus" items)
 
 | Item | Status |
 |---|---|
@@ -107,18 +192,26 @@ Full rationale for each (alternatives considered, what was rejected, and why) is
 | Source-quality weighting, visible in code | ✅ `retrieval/tiers.py` (rule-based tiers) feeding `verify/confidence.py` (tier + corroboration by independent sources + staleness vs the sub-question's `time_scope`) |
 | Clean export and follow-up | ✅ Follow-up: `POST /runs/{id}/followup` / `python cli.py followup <run_id> "…"` answers from the evidence a run already stored (no new search) and re-verifies every sentence. ⚠️ Export: JSON/replay and Markdown only — **no PDF** |
 
-## Point to a rejected claim
+---
+
+<a id="point-to-a-rejected-claim"></a>
+
+## 🚫 Point to a rejected claim
 
 From a real run (run `d5371083`, earlier model config — see [`EVAL.md`](EVAL.md) for the corrected-config re-run) (`What are the main risks of investing in the EV battery market in 2026?`, 153 claims drafted, 137 passed verification — 116 verified, 19 re-cited, 2 partial, **16 rejected**):
 
 > **Claim drafted:** *"The EV battery recycling capacity is expected to expand by 2026."*
-> **The model's own self-report:** entailment = `supported` — *"the passage explicitly mentions 'EV BATTERY RECYCLING CAPACITY EXPANSION', directly supporting the claim."*
-> **What it actually quoted as evidence:** `"5.10.2\n\nEV BATTERY RECYCLING CAPACITY EXPANSION"` — a report's section heading.
-> **Verdict: rejected.** `stage_failed=numeric_mismatch` — the claim asserts *2026*; the quoted span is a table-of-contents entry that never says so. The model said "supported." The code checked what was actually quoted, not what the model said about it, and rejected it anyway.
+> <br/>**The model's own self-report:** entailment = `supported` — *"the passage explicitly mentions 'EV BATTERY RECYCLING CAPACITY EXPANSION', directly supporting the claim."*
+> <br/>**What it actually quoted as evidence:** `"5.10.2\n\nEV BATTERY RECYCLING CAPACITY EXPANSION"` — a report's section heading.
+> <br/>**Verdict: rejected.** `stage_failed=numeric_mismatch` — the claim asserts *2026*; the quoted span is a table-of-contents entry that never says so. The model said "supported." The code checked what was actually quoted, not what the model said about it, and rejected it anyway.
 
 This is the exact failure mode a single-LLM-judge system can't catch — the model confidently cited *something real*, just not something that actually substantiates the specific fact being claimed. The same pattern caught a second claim in the same run (`"The 2026 Iran-US conflict is projected to impact..."` — also quoted a bare section heading). Full list, with the AI's reason alongside, is in the Streamlit UI's **Rejected & Unverified** tab — and from there, a human can promote or confirm any of them (see Human Reviewer above).
 
-## Proven against real services, not just mocks
+---
+
+<a id="proven-against-real-services"></a>
+
+## 🧪 Proven against real services, not just mocks
 
 144 tests pass fully mocked — correctness doesn't depend on a live key. But most submissions get tested once against a happy path and never touched again. This one was pointed at live Mesh and live Firecrawl, not just CI, broke in three specific ways, and every one was found, root-caused, and fixed with a regression test — in the same session, not swept into a "known limitations" list:
 
@@ -140,7 +233,11 @@ The same discipline was turned on the docs themselves: a later pass asked not "d
 
 Full rationale for each: `DESIGN.md` §17. Also worth naming as a USP in its own right: four of the sequential agent-loops that call Mesh (Verifier, Drafter, Contradiction Checker, loop-control's coverage pass) run their LLM calls concurrently via `asyncio.gather`, not one-at-a-time — real network throttling is enforced once, centrally, by `MeshClient`'s own internal semaphore, so the loop fans out without overrunning Mesh's rate limits. This is what closed the "query is taking time to respond" latency gap found during manual UI testing.
 
-## Self-evaluation — test set and results
+---
+
+<a id="self-evaluation"></a>
+
+## 📊 Self-evaluation — test set and results
 
 The brief: *"a team that genuinely built this almost always measured whether it works."* Full tables, caveats and the failure gallery are in [`EVAL.md`](EVAL.md); raw outputs are in `eval/results/`. Short version:
 
@@ -162,13 +259,25 @@ The brief: *"a team that genuinely built this almost always measured whether it 
 
 The before→after gain comes from one rule: a `partial` verdict whose own stated reason says the evidence "does not mention/state/link…" is now a fail (`verify/gap_reason.py`). Treat it as indicative, not a clean A/B: the re-run re-fetched the live web, so the evidence is not byte-identical, and 12 questions is a small sample. The Auditor now keeps fewer sentences (0.86 → 0.75 kept rate), which is the cost.
 
-**Important context:** Firecrawl's credits ran out, so this sweep used the free second provider (Wikipedia + arXiv + PubMed). It is easier to quote but less authoritative than live web search, so these numbers are *not* directly comparable to the earlier Firecrawl-backed runs (10 runs, 216 sentences: strict 0.81, lenient 0.97).
+> [!IMPORTANT]
+> **Important context:** Firecrawl's credits ran out, so this sweep used the free second provider (Wikipedia + arXiv + PubMed). It is easier to quote but less authoritative than live web search, so these numbers are *not* directly comparable to the earlier Firecrawl-backed runs (10 runs, 216 sentences: strict 0.81, lenient 0.97).
 
-**Not measured:** judge–human agreement and false-rejection rate (they need human labels; `eval/gold_labels.csv` holds 37 shuffled, unlabelled pairs and rows with a blank label are ignored — fill them in and run `python -m eval.run_eval --gold-only`), loop lift, ablations, and a Firecrawl-backed re-run of the sweep.
+> [!WARNING]
+> **Not measured:** judge–human agreement and false-rejection rate (they need human labels; `eval/gold_labels.csv` holds 37 shuffled, unlabelled pairs and rows with a blank label are ignored — fill them in and run `python -m eval.run_eval --gold-only`), loop lift, ablations, and a Firecrawl-backed re-run of the sweep.
 
-**What the evaluation found (failure gallery in `EVAL.md`):** the weak spot was the `partial` verdict: the Auditor often wrote a reason that *described the gap* ("does not specifically mention…") and still passed the sentence while the independent grader caught it. That is now fixed by the self-reported-gap rule. Still unaddressed: a Costa Rica law reported as a US fact (entity substitution), and "true but irrelevant" evidence. Also: in the planted test, all 57 non-scope rejections came from the LLM's entailment judgment, not from the code-side span/numeric checks — those are a backstop this test did not exercise.
+> [!NOTE]
+> **What the evaluation found (failure gallery in `EVAL.md`):** the weak spot was the `partial` verdict: the Auditor often wrote a reason that *described the gap* ("does not specifically mention…") and still passed the sentence while the independent grader caught it. That is now fixed by the self-reported-gap rule. Still unaddressed: a Costa Rica law reported as a US fact (entity substitution), and "true but irrelevant" evidence. Also: in the planted test, all 57 non-scope rejections came from the LLM's entailment judgment, not from the code-side span/numeric checks — those are a backstop this test did not exercise.
 
-## Project layout
+---
+
+<a id="project-layout"></a>
+
+## 🗂️ Project layout
+
+<details>
+<summary><b>Click to expand the repository tree</b></summary>
+
+<br/>
 
 ```
 deepdive/
@@ -248,7 +357,13 @@ deepdive/
 └── requirements.txt
 ```
 
-## Quickstart
+</details>
+
+---
+
+<a id="quickstart"></a>
+
+## 🚀 Quickstart
 
 ```bash
 pip install -r requirements.txt
@@ -263,15 +378,24 @@ streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app -
 
 **Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 144 tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
 
-## Scope freeze
+---
 
-**Scope is frozen as of 2026-10-24 for the 2026-10-31 submission. No new features will be added.** Allowed from here: bug fixes, correcting a number or a claim in the docs that turns out to be wrong, and the human labelling of `eval/gold_labels.csv`. Everything below is deliberately out of scope for this submission:
+<a id="scope-freeze"></a>
+
+## 🔒 Scope freeze
+
+> [!IMPORTANT]
+> **Scope is frozen as of 2026-10-24 for the 2026-10-31 submission. No new features will be added.** Allowed from here: bug fixes, correcting a number or a claim in the docs that turns out to be wrong, and the human labelling of `eval/gold_labels.csv`. Everything below is deliberately out of scope for this submission:
 
 - PDF export, uploaded-document support, a Firecrawl-backed re-run of the sweep, ablations, a deployed URL, auth/Docker/Prometheus/Langfuse.
 - Fixing entity substitution (Costa Rica → "the US") and "true but irrelevant" evidence — documented as known failures in `EVAL.md` §5.
 - Broadening the scope-widening word list or the self-reported-gap regex: both were written after reading failure cases, so further tuning would be fitting to the test.
 
-## What we deliberately didn't build, and why
+---
+
+<a id="what-we-deliberately-didnt-build"></a>
+
+## ✂️ What we deliberately didn't build, and why
 
 | Skipped | Why |
 |---|---|
@@ -280,11 +404,19 @@ streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app -
 | A pause-for-confirmation when the Planner flags a false premise | Would make the automated "abstention accuracy" eval metric depend on a human being present for every run — actively counterproductive, not just unnecessary — `DESIGN.md` §15 |
 | Docker, Prometheus, Langfuse, API auth | Real engineering practice, zero weight in what this track actually judges — `BLUEPRINT.md` §17 |
 
-## The docs, and why they're separate
+---
+
+<a id="the-docs"></a>
+
+## 📚 The docs, and why they're separate
 
 This README is the pitch — skim it, verify the claims, move on. `BLUEPRINT.md` is the full engineering spec (what's built, phase by phase). `DESIGN.md` is the rationale (why, and what was rejected). `EVAL.md` is the measurement detail. Four documents with four different jobs, not one file trying to be all of them at once.
 
-## What's intentionally not here
+---
+
+<a id="whats-intentionally-not-here"></a>
+
+## 🙋 What's intentionally not here
 
 Stated plainly rather than left for a judge to notice and wonder about:
 
@@ -293,3 +425,11 @@ Stated plainly rather than left for a judge to notice and wonder about:
 - **No PDF export.**
 - **No uploaded-document support.** The brief lists it as optional; `markitdown` is in `requirements.txt` but no upload endpoint or parser is built.
 - **No LICENSE file.** Not an oversight to leave unmentioned — left out deliberately since it has no bearing on hackathon judging and adding one casually (without the user deciding the actual terms) would be a bigger claim than this README is willing to make on someone else's behalf.
+
+<br/>
+
+<div align="center">
+
+**🔎 DeepDive** — built for **Agent Arena 2026, Track 01**
+
+</div>
