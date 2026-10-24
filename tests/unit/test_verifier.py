@@ -170,3 +170,30 @@ async def test_already_verified_claims_are_skipped(tmp_path):
     assert verdicts == []
     assert route.call_count == 0  # no Mesh call spent re-verifying an already-verified claim
     assert updated_claims == [claim]  # unchanged, passed through
+
+
+@respx.mock
+async def test_independent_corroboration_raises_confidence(tmp_path):
+    """BLUEPRINT.md §5 stage 6: the same fact supported by a second,
+    independent source scores higher than the same fact from one source."""
+    text = "Global EV battery demand reached 950 GWh in 2024."
+    passages = [
+        PassageState(id=f"passage-{i}", source_id=f"source-{i}", subq_id="subq-1", start=0, end=len(text), text=text)
+        for i in (1, 2)
+    ]
+    claims = [
+        ClaimState(id=f"claim-{i}", subq_id="subq-1", text=text, passage_id=f"passage-{i}", status="pending")
+        for i in (1, 2)
+    ]
+    respx.post("https://api.meshapi.ai/v1/chat/completions").mock(
+        return_value=_mock_response(json.dumps({"evidence_span": text, "entailment": "supported", "reason": "stated verbatim"}))
+    )
+
+    deps = Deps(mesh=_client(tmp_path), search=None, repo=_FakeRepo(), settings=_FakeSettings())
+    _, corroborated = await verify_all(
+        deps, "run-1", claims, passages, [_source("1"), _source("2")], already_verified_ids=set()
+    )
+    _, alone = await verify_all(
+        deps, "run-1", claims[:1], passages[:1], [_source("1")], already_verified_ids=set()
+    )
+    assert corroborated[0]["confidence_score"] > alone[0]["confidence_score"]

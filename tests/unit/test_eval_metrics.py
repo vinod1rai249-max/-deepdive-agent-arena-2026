@@ -83,4 +83,4 @@ def test_report_render_includes_planted_recall_and_question_stats():
     text = render(results)
     assert "0.9" in text
     assert "wrong_number" in text
-    assert "Questions evaluated | 2" in text
+    assert "Questions evaluated (research / false-premise) | 2 / 0" in text

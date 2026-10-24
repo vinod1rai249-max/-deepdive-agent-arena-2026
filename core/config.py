@@ -39,7 +39,6 @@ class Settings(BaseSettings):
     followup_top_k: int = 10
     relevance_prefilter_threshold: float = 0.05
 
-    demo_mode: str = "local"
     api_key: str | None = None
 
 

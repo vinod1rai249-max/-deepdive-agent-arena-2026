@@ -76,3 +76,21 @@ async def test_synthesize_marks_insufficient_evidence_when_no_claims():
     assert len(sentences) == 1
     assert sentences[0]["claim_ids"] == []
     assert "Insufficient evidence" in sentences[0]["text"]
+
+
+def test_gaps_section_lists_excluded_claims_without_citations():
+    from agents.synthesizer import GAPS_SECTION, build_gaps_sentences
+
+    subq = {"id": "s1", "text": "Key risks?", "acceptance_criteria": ["a"], "time_scope": None, "premise_flag": False}
+    claims = [
+        {"id": "c1", "subq_id": "s1", "text": "Fabricated merger.", "passage_id": "p1", "status": "rejected"},
+        {"id": "c2", "subq_id": "s1", "text": "Verified fact.", "passage_id": "p2", "status": "verified"},
+    ]
+    verdicts = [{"claim_id": "c1", "stage_failed": "entailment", "outcome": "rejected", "reason": "passage is about revenue"}]
+    out = build_gaps_sentences([subq], claims, verdicts, {"s1": 0.25}, start_order=7)
+
+    assert [s["order"] for s in out] == [7, 8]
+    assert all(s["section"] == GAPS_SECTION and s["claim_ids"] == [] for s in out)
+    assert "25%" in out[0]["text"]
+    assert "Fabricated merger." in out[1]["text"] and "entailment" in out[1]["text"]
+    assert not any("Verified fact." in s["text"] for s in out)

@@ -2,7 +2,7 @@
 
 **A self-verifying research analyst.** Every sentence in the final report is checked against the source it cites — by code, not by asking the model to promise it's telling the truth.
 
-`✅ 100% Mesh API` — every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. &nbsp;·&nbsp; `✅ 103 tests, 0 live credits to verify correctness` &nbsp;·&nbsp; `✅ Real runs against live Mesh + Firecrawl` — not just mocks
+`✅ 100% Mesh API` — every LLM call in this codebase routes through Mesh, enforced by an automated test (`tests/unit/test_architecture.py`), not a claim in this README. &nbsp;·&nbsp; `✅ 119 tests, 0 live credits to verify correctness` &nbsp;·&nbsp; `✅ Real runs against live Mesh + Firecrawl` — not just mocks
 
 Built for **Agent Arena 2026, Track 01**. 🎥 [**Demo video**](https://www.youtube.com/watch?v=yvRKvqpDM24) · Full spec: [`BLUEPRINT.md`](BLUEPRINT.md) · Design rationale: [`DESIGN.md`](DESIGN.md) · Self-eval detail: [`EVAL.md`](EVAL.md)
 
@@ -25,9 +25,10 @@ The brief's own framing: *"Tools that produce cited reports from one question al
 | Citations genuinely trace to checked sources | `agents/verifier.py` — span-quote (LLM) → span-exists (code, `rapidfuzz`) → numeric-consistency (code) |
 | The model can't author a fake citation | `agents/schemas.py` (index-based citing) + `store/repo.py::get_report` (FK resolution) — DESIGN.md §1, §3 |
 | The loop is real, not a retry wrapper | `agents/loop_control.py` — failure reasons feed back into *different* search queries, not the same one again |
-| A second, different model audits the first | `llm/models.yaml` — `verifier` and `auditor` roles are different underlying models, by rule |
+| A second, different model audits the first | `llm/models.yaml` — `verifier`, `auditor` and the eval `grader` share **no** model, primary or fallback; enforced by `tests/unit/test_model_roles.py` |
 | Sources that disagree are surfaced, not resolved by fiat | `agents/contradiction.py` — renders both claims verbatim, never picks a winner |
-| Self-eval has no fabricated numbers | `EVAL.md` — states plainly what's measured vs. pending, with no padding |
+| Self-eval has no fabricated numbers | `EVAL.md` + `eval/results/*.json` — real numbers where measured, "not measured" where not |
+| Report says what it could not verify | `agents/synthesizer.py::build_gaps_sentences` — deterministic "Gaps / Unverified" section, no LLM |
 
 ## How the agents cooperate
 
@@ -76,7 +77,7 @@ flowchart TD
 | **Claim Verifier** | Independently checks each claim against its cited source | `verifier` | The only agent whose output is cross-checked by code, not just read |
 | **Contradiction Checker** | Flags verified claims that genuinely disagree | `cheap` | Never resolves a disagreement — always keeps both |
 | **Synthesizer** | Writes report sentences from verified claims only | `synth` | Composed per sub-question, so context never grows unbounded |
-| **Report Auditor** | Independently re-checks every synthesized sentence | `auditor` | **Always a different model than `verifier`** — by rule, not convention |
+| **Report Auditor** | Independently re-checks every synthesized sentence | `auditor` | **Never shares a model with `verifier`, even on fallback** — enforced by a test |
 | **Human Reviewer** | Optional: promotes or confirms a rejected claim | *none — a person* | Never mutates the AI's original verdict; additive only |
 
 ## Key design decisions
@@ -85,7 +86,7 @@ Full rationale for each (alternatives considered, what was rejected, and why) is
 
 1. **Verification is two independent layers, not one.** An LLM quotes the exact span it's relying on; code (`rapidfuzz` span-match + numeric check) independently confirms that span is real and the numbers weren't altered. A model can lie about entailment; it's much harder to fabricate a verbatim quote that also survives a fuzzy-match against text it never saw. `DESIGN.md` §1.
 2. **Citations are a database foreign-key chain, never LLM-authored text.** The renderer never accepts a URL from a model — it resolves `Claim.passage_id → Passage.source_id → Source.url` in code. There's no field for a hallucinated or injected citation to land in. `DESIGN.md` §3.
-3. **The Verifier and Report Auditor are always different underlying models, by rule.** Using the same model to draft, verify, and audit its own writing lets errors slip past a check written in that model's own "style" of reasoning — a second model is cheap insurance against that correlated blind spot. `DESIGN.md` §4.
+3. **The Verifier, Report Auditor and eval Grader never share a model — primary or fallback.** Using the same model to draft, verify, and audit its own writing lets errors slip past a check written in that model's own "style" of reasoning. An outside review found that the original config broke this under fallback (269 of 297 verifier calls on the first showcase run ran on the Auditor's model); it is now fixed and test-enforced. `DESIGN.md` §4, §18.
 4. **A rejected claim gets a re-attribution attempt before being discarded**, because "true claim, wrong footnote" and "false claim" are different failure modes — conflating them understates real groundedness and overstates the system's error rate. `DESIGN.md` §5.
 5. **LangGraph over a custom orchestrator, CrewAI, or AutoGen**, specifically because the verification loop-back (`coverage < τ → re-research`) needed to be a first-class, inspectable graph edge, not a hand-rolled retry wrapper — and because its checkpointer gives crash-resume almost for free. `DESIGN.md` §2, §14.
 6. **The one human-in-the-loop point kept is additive, not a gate.** A human can promote a rejected claim, but it never mutates the original AI verdict (a separate `HumanReview` row) and never bypasses the Auditor — a promoted claim still has to survive the same independent check every other sentence does. Every other candidate HITL point considered (pre-publish approval, premise-flag confirmation) was deliberately rejected as adding process without adding information the trail doesn't already surface. `DESIGN.md` §15.
@@ -96,12 +97,12 @@ Full rationale for each (alternatives considered, what was rejected, and why) is
 |---|---|
 | Structured framework (LangGraph) with a real loop-back on verification failure | ✅ `agents/loop_control.py` + a full-graph integration test proves a thin sub-question triggers genuine re-research |
 | Contradiction detection across sources | ✅ `agents/contradiction.py`, rendered as "Sources disagree" quoting both claims verbatim |
-| Source-quality weighting, visible in code | ✅ `retrieval/tiers.py` (rule-based tiers) feeding `verify/confidence.py` (tier + recency + corroboration) |
+| Source-quality weighting, visible in code | ✅ `retrieval/tiers.py` (rule-based tiers) feeding `verify/confidence.py` (tier + corroboration by independent sources + staleness vs the sub-question's `time_scope`) |
 | Clean export and follow-up | ⚠️ Partial — JSON export/replay and Markdown export are built and tested (`cli.py export`/`replay`); PDF export and conversational follow-up are **not built** (stated plainly, see `BLUEPRINT.md` §17) |
 
 ## Point to a rejected claim
 
-From a real run today (`What are the main risks of investing in the EV battery market in 2026?`, 153 claims drafted, 137 passed verification — 116 verified, 19 re-cited, 2 partial, **16 rejected**):
+From a real run (run `d5371083`, earlier model config — see [`EVAL.md`](EVAL.md) for the corrected-config re-run) (`What are the main risks of investing in the EV battery market in 2026?`, 153 claims drafted, 137 passed verification — 116 verified, 19 re-cited, 2 partial, **16 rejected**):
 
 > **Claim drafted:** *"The EV battery recycling capacity is expected to expand by 2026."*
 > **The model's own self-report:** entailment = `supported` — *"the passage explicitly mentions 'EV BATTERY RECYCLING CAPACITY EXPANSION', directly supporting the claim."*
@@ -112,7 +113,7 @@ This is the exact failure mode a single-LLM-judge system can't catch — the mod
 
 ## Proven against real services, not just mocks
 
-103 tests pass fully mocked — correctness doesn't depend on a live key. But most submissions get tested once against a happy path and never touched again. This one was pointed at live Mesh and live Firecrawl, not just CI, broke in three specific ways, and every one was found, root-caused, and fixed with a regression test — in the same session, not swept into a "known limitations" list:
+119 tests pass fully mocked — correctness doesn't depend on a live key. But most submissions get tested once against a happy path and never touched again. This one was pointed at live Mesh and live Firecrawl, not just CI, broke in three specific ways, and every one was found, root-caused, and fixed with a regression test — in the same session, not swept into a "known limitations" list:
 
 | Found | Root cause | Resolution |
 |---|---|---|
@@ -134,20 +135,26 @@ Full rationale for each: `DESIGN.md` §17. Also worth naming as a USP in its own
 
 ## Self-evaluation — test set and results
 
-The brief: *"a team that genuinely built this almost always measured whether it works."* Full detail (metric definitions, how to reproduce, a failure gallery) lives in `EVAL.md`; this is the short, honest version.
+The brief: *"a team that genuinely built this almost always measured whether it works."* Full tables, scope limits and the failure gallery are in [`EVAL.md`](EVAL.md); raw outputs are in `eval/results/`. Short version:
 
-**The test set** (`eval/`, every file version-controlled, nothing generated at eval time):
+**The test set** (`eval/`, all version-controlled): 30 authored questions across 6 domains with rubrics written before any run, 5 false-premise questions, 60 planted bad claims (15 each: wrong number, wrong entity, unsupported extrapolation, contradiction), 3 prompt-injection pages, and a `gold_labels.csv` schema for human labels.
 
-| File | Contents |
-|---|---|
-| `eval/questions.yaml` | 30 authored research questions across 6 domains (finance, health, tech, energy/climate, policy, history), each with a rubric written *before* any run — plus 5 dedicated false-premise questions to score abstention |
-| `eval/planted_claims.yaml` | 60 deliberately bad claims planted across 4 failure types (15 each: wrong number, wrong entity, unsupported extrapolation, contradiction), each paired with the real passage it should fail against |
-| `eval/injection_pages/` | 3 HTML fixtures with embedded prompt-injection attempts, targeting the Researcher/Drafter, the Synthesizer, and the Auditor specifically |
-| `eval/gold_labels.csv` | Schema for human-labeled claim↔passage ground truth, collected via `eval/label.py` from real run output — intentionally owned by a person, never auto-filled by an LLM |
+**Measured numbers:**
 
-**The metrics** this test set drives — sentence support rate, citation precision, planted-claim recall, false-rejection rate, judge–human agreement (grader vs. gold labels, accuracy + Cohen's κ), rubric coverage, abstention accuracy, injection resistance, cost/latency — are all implemented and unit-tested against constructed data in `eval/run_eval.py` and `tests/unit/test_eval_metrics.py`/`test_eval_grader.py`, independent of whether a live sweep has been run.
+| Metric | Result | Source |
+|---|---|---|
+| Planted-claim recall (60 bad claims → Verifier) | **57/60 = 0.95** (wrong number, wrong entity, contradiction: 15/15 each; unsupported extrapolation: 12/15) | `eval/results/run_20261024T122104Z.json` |
+| Independent-grader support of cited sentences, strict | **175/216 = 0.81** over 10 real runs (corrected-config subset: 100/124 = 0.81) | `eval/results/grade_existing_20261024T125734Z.json` |
+| Independent-grader support, lenient (supported + partial) | **209/216 = 0.97**; 7 sentences (3.2%) judged unsupported | same |
+| Claims passing verification | 625/666 = 0.94 | same |
+| Rubric coverage (4 corrected-config runs) | mean 0.77 (0.75, 0.33, 1.0, 1.0) | same |
+| Cost per question (pipeline, est.) | $0.06–$0.20 | run trail |
 
-**The numbers: not yet produced, stated plainly rather than filled in with something invented.** Running the actual sweep (`python eval/run_eval.py`) spends real Mesh credits and needs `gold_labels.csv` populated first (`python eval/label.py <run_id>`, after at least one real `cli.py run`) — neither has been done in this environment. `eval/results/` is empty today; nothing in this repo fabricates a result to fill it. What *does* exist from real runs: the live-bug-fix evidence above, and the single worked example of a rejected claim with full reasoning (see "Point to a rejected claim"), which is real output, just not a statistically aggregated score.
+The "independent grader" is a third model (`claude-sonnet-5`) that is neither the Verifier nor the Auditor and sees none of their verdicts.
+
+**Not measured, and why** (stated rather than filled in): the full 17-question sweep did not complete — parallel runs hit Firecrawl's rate limit and then its credits ran out, so only 4 of 12 research questions got real evidence and none of the 5 false-premise questions did; the **baseline comparison**, **abstention accuracy**, **judge–human agreement** (needs human labels in `gold_labels.csv`) and **ablations** are therefore unmeasured. Resume command is in `EVAL.md`.
+
+**What the evaluation found (failure gallery in `EVAL.md`):** the weakest point is the `partial` verdict. It passes verification, so scope-widening claims ("one retailer" → "the entire economy", "one facility" → "national") got through 3 of 15 times in the planted set, and the Auditor repeated the same leniency on real reports ("implies dependency" accepted). Also: all 57 planted rejections came from the LLM's entailment judgment, not the code-side span/numeric checks — those are a backstop this test did not exercise.
 
 ## Project layout
 
@@ -207,6 +214,8 @@ deepdive/
 │   ├── injection_pages/             # 3 prompt-injection fixtures run through the real pipeline
 │   ├── baseline.py                    # Single-LLM-call baseline, scored by the same rubric as DeepDive
 │   ├── label.py                         # Scoring logic against gold labels
+│   ├── grade_runs.py                       # Independent re-grade of runs already in the DB (Mesh only)
+│   ├── results/                              # Real eval outputs (JSON) quoted by EVAL.md
 │   ├── report.py                          # Aggregates results into EVAL.md-shaped output
 │   └── run_eval.py                          # Entry point — runs the full eval sweep
 ├── prompts/                  # One versioned prompt template per agent role (`<role>.v1.md`)
@@ -228,12 +237,12 @@ deepdive/
 pip install -r requirements.txt
 # paste a real MESH_API_KEY (and ideally FIRECRAWL_API_KEY) into .env
 python cli.py init-db
-pytest -q                                            # 103 tests, fully mocked
+pytest -q                                            # 119 tests, fully mocked
 python cli.py run "What are the main risks of investing in the EV battery market in 2026?"
 streamlit run ui/streamlit_app.py                    # or: uvicorn app.api:app --reload
 ```
 
-**Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 103+ tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
+**Running this repo's own GitHub Actions:** `.github/workflows/ci.yml` needs no secrets — all 119 tests are fully mocked. `.github/workflows/agent-arena-2026-checks.yml` (the hackathon's own submission check) needs two repository secrets set under *Settings → Secrets and variables → Actions*: `SUBMISSION_TOKEN` (issued by the hackathon platform) and `MESH_API_KEY` (a real Mesh key — the checks script makes real calls). Neither is in this repo, by design; `.env` is gitignored and was verified clean before every push in this project's history.
 
 ## What we deliberately didn't build, and why
 
@@ -253,5 +262,6 @@ This README is the pitch — skim it, verify the claims, move on. `BLUEPRINT.md`
 Stated plainly rather than left for a judge to notice and wonder about:
 
 - **No deployed URL.** This runs locally against real Mesh/Firecrawl keys (see Quickstart) — there's no hosted instance to link to. A [demo video](https://www.youtube.com/watch?v=yvRKvqpDM24) is linked at the top instead; the real-run evidence in this README (the rejected-claim example, the three live bugs and their fixes) is first-hand from this session, not staged for the recording.
-- **`samples/` (`EVAL.md`'s planned location for saved eval transcripts) does not exist yet.** The eval *infrastructure* is built and unit-tested (see Self-evaluation above); the actual sweep that would populate it needs a real Mesh key and human-labeled `gold_labels.csv`, which is why `EVAL.md` states the headline numbers as pending instead of fabricating them.
+- **The eval sweep is partial.** See "Not measured, and why" under Self-evaluation. There is no `samples/` directory of committed replayable runs; real run outputs live in `eval/results/`.
+- **No uploaded-document support.** The brief lists it as optional; `markitdown` is in `requirements.txt` but no upload endpoint or parser is built.
 - **No LICENSE file.** Not an oversight to leave unmentioned — left out deliberately since it has no bearing on hackathon judging and adding one casually (without the user deciding the actual terms) would be a bigger claim than this README is willing to make on someone else's behalf.

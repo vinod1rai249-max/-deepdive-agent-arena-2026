@@ -176,10 +176,14 @@ async def test_override_endpoint_promotes_a_claim_and_resynthesizes(tmp_path):
         assert resp.status_code == 200
         body = resp.json()
         assert body["new_status"] == "verified"
-        assert body["report_sentence_count"] == 1
+        # 1 cited sentence + 1 deterministic "Gaps / Unverified" note (the
+        # seeded sub-question has 0 coverage), so assert on cited ones.
+        assert body["report_sentence_count"] == 2
 
         report = await client.get("/runs/run-override")
-        assert len(report.json()["report"]) == 1
+        cited = [s for s in report.json()["report"] if s["citations"]]
+        assert len(cited) == 1
+        assert any(s["section"] == "Gaps / Unverified" for s in report.json()["report"])
 
         trail = await client.get("/runs/run-override/trail")
         assert len(trail.json()["human_reviews"]) == 1

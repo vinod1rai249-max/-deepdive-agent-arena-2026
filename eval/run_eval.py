@@ -14,18 +14,19 @@ The metric CALCULATIONS themselves (the `compute_*` functions below) are
 pure and unit-tested against constructed data — see
 tests/unit/test_eval_metrics.py — independent of whether a real pipeline
 run has ever been executed. Nothing in this file fabricates a result;
-`main()` has not been run against a real Mesh key as of this commit, and
-`eval/results/` is empty until it has.
+`eval/results/` holds the JSON from each real execution of `main()`;
+EVAL.md quotes those files, never numbers typed by hand.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import csv
 import json
 import random
 import statistics
-import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,12 +34,13 @@ from typing import Any
 
 import yaml
 
-from agents.schemas import SpanJudgment
+from agents.schemas import CoverageJudgment, SpanJudgment
 from agents.verifier import verify_all
 from app.deps import Deps
 from app.runner import build_deps, start_run
 from app.state import VERIFIED_STATUSES, ClaimState, PassageState, SourceState
 from core.config import get_settings
+from core.guardrails import wrap_untrusted
 from eval.baseline import answer_with_citations, score_baseline_answer
 from store.repo import Repo
 
@@ -151,10 +153,13 @@ async def evaluate_planted_claims(deps: Deps) -> list[dict[str, Any]]:
                 id=source_id, subq_id="eval-subq", url="https://eval.local/fixture", domain="eval.local",
                 title=None, tier=3, content_hash="n/a", text=entry["passage"], origin="web", published_at=None,
             )
-            updated_claims, _verdicts = await verify_all(deps, "eval-planted", [claim], [passage], [source], set())
+            updated_claims, verdicts = await verify_all(deps, "eval-planted", [claim], [passage], [source], set())
             rejected = updated_claims[0]["status"] not in VERIFIED_STATUSES
             results.append(
-                {"id": entry["id"], "type": claim_type, "rejected": rejected, "outcome": updated_claims[0]["status"]}
+                {
+                    "id": entry["id"], "type": claim_type, "rejected": rejected, "outcome": updated_claims[0]["status"],
+                    "stage_failed": verdicts[0]["stage_failed"] if verdicts else None,
+                }
             )
     return results
 
@@ -233,22 +238,114 @@ async def evaluate_gold_labels(
     return {"n": len(rows), "accuracy": accuracy, "kappa": kappa, "false_rejection_rate": false_rejection_rate, "details": details}
 
 
-async def evaluate_question(settings: Any, repo: Repo, entry: dict[str, Any]) -> dict[str, Any]:
-    run_id = await start_run(settings, repo, entry["question"])
-    trail = repo.get_trail(run_id)
-    report = repo.get_report(run_id)
-    claim_status_by_id = {c["id"]: c["status"] for c in trail["claims"]}
+async def grade_final_report(deps: Deps, export: dict[str, Any]) -> dict[str, Any]:
+    """Independent re-grade of every CITED sentence in the final report by
+    the `grader` role — a model that is neither the Verifier nor the
+    Auditor (tests/unit/test_model_roles.py), so this number is not the
+    pipeline marking its own homework. Evidence = the stored passage
+    behind each cited claim; the grader sees nothing of the pipeline's
+    verdicts. `strict` counts only "supported"; `lenient` also counts
+    "partial"."""
+    passage_text = {p["id"]: p["text"] for p in export["passages"]}
+    claim_by_id = {c["id"]: c for c in export["claims"]}
+    cited = [s for s in export["report_sentences"] if s["claim_ids"] and s["audit_passed"]]
+
+    async def grade(sentence: dict[str, Any]) -> str:
+        evidence = "\n\n".join(
+            dict.fromkeys(
+                passage_text[claim_by_id[cid]["passage_id"]]
+                for cid in sentence["claim_ids"]
+                if cid in claim_by_id and claim_by_id[cid]["passage_id"] in passage_text
+            )
+        )
+        if not evidence:
+            return "unsupported"
+        try:
+            judgment: SpanJudgment = await deps.mesh.complete_json(
+                node="grader", prompt_name="grader.v1",
+                variables={"claim": sentence["text"], "passage": wrap_untrusted(evidence)},
+                schema=SpanJudgment, model_role="grader", run_id="eval-grader",
+            )
+            return judgment.entailment
+        except Exception:
+            return "grader_error"
+
+    labels = await asyncio.gather(*(grade(s) for s in cited))
+    n = len(labels)
     return {
+        "n_cited_sentences": n,
+        "strict_support_rate": round(sum(1 for l in labels if l == "supported") / n, 4) if n else None,
+        "lenient_support_rate": round(sum(1 for l in labels if l in ("supported", "partial")) / n, 4) if n else None,
+        "grader_errors": sum(1 for l in labels if l == "grader_error"),
+        "labels": list(labels),
+    }
+
+
+async def grade_rubric(deps: Deps, entry: dict[str, Any], export: dict[str, Any]) -> float | None:
+    """Rubric coverage (BLUEPRINT.md §15): the rubric was written before any
+    run (questions.yaml). The independent `grader` role judges which rubric
+    aspects the FINAL cited report text actually covers."""
+    rubric = entry.get("rubric") or []
+    report_text = [s["text"] for s in export["report_sentences"] if s["claim_ids"] and s["audit_passed"]]
+    if not rubric:
+        return None
+    if not report_text:
+        return 0.0
+    try:
+        judgment: CoverageJudgment = await deps.mesh.complete_json(
+            node="grader", prompt_name="coverage.v1",
+            variables={
+                "sub_question": entry["question"],
+                "acceptance_criteria": "\n".join(f"{i}. {r}" for i, r in enumerate(rubric)),
+                "claims": "\n".join(f"- {t}" for t in report_text),
+            },
+            schema=CoverageJudgment, model_role="grader", run_id="eval-grader",
+        )
+    except Exception:
+        return None
+    return compute_rubric_coverage(rubric, judgment.criteria_satisfied)
+
+
+async def evaluate_question(settings: Any, repo: Repo, entry: dict[str, Any], deps: Deps | None = None) -> dict[str, Any]:
+    started = time.monotonic()
+    run_id = await start_run(settings, repo, entry["question"])
+    latency_s = round(time.monotonic() - started, 1)
+    trail = repo.get_trail(run_id)
+    export = repo.export_run(run_id)
+    report = repo.get_report(run_id)  # resolved view (titles/urls); has no claim_ids
+    claim_status_by_id = {c["id"]: c["status"] for c in trail["claims"]}
+
+    statuses = [c["status"] for c in trail["claims"]]
+    n_claims = len(statuses)
+    n_passed = sum(1 for st in statuses if st in VERIFIED_STATUSES)
+    cited_rows = [s for s in export["report_sentences"] if s["claim_ids"]]
+    gap_rows = [s for s in export["report_sentences"] if not s["claim_ids"]]
+
+    result: dict[str, Any] = {
         "id": entry["id"],
         "run_id": run_id,
         "stop_reason": trail["stop_reason"],
         "iterations": trail["iterations"],
         "cost_usd": trail["llm_calls"]["total_cost_usd"],
+        "latency_s": latency_s,
         "n_report_sentences": len(report),
-        "n_claims": len(trail["claims"]),
+        "n_claims": n_claims,
+        "n_claims_passed": n_passed,
+        "claim_pass_rate": round(n_passed / n_claims, 4) if n_claims else None,
+        "n_claims_rejected": sum(1 for st in statuses if st == "rejected"),
         "n_verdicts": len(trail["verdicts"]),
-        "citation_precision": compute_citation_precision(report, claim_status_by_id),
+        # Fraction of synthesized, cited sentences the Report Auditor kept (before any stripping).
+        "sentence_support_rate": compute_sentence_support_rate(cited_rows),
+        "n_gap_notes": len(gap_rows),
+        "citation_precision": compute_citation_precision(
+            [s for s in export["report_sentences"] if s["claim_ids"] and s["audit_passed"]], claim_status_by_id
+        ),
+        "premise_flagged": any(sq["premise_flag"] for sq in trail["sub_questions"]),
     }
+    if deps is not None:
+        result["independent_grade"] = await grade_final_report(deps, export)
+        result["rubric_coverage"] = await grade_rubric(deps, entry, export)
+    return result
 
 
 async def evaluate_baseline_question(deps: Deps, entry: dict[str, Any]) -> dict[str, Any]:
@@ -260,63 +357,103 @@ async def evaluate_baseline_question(deps: Deps, entry: dict[str, Any]) -> dict[
     return {"id": entry["id"], **scored}
 
 
-async def main(limit: int | None = None, with_baseline: bool = True) -> None:
+def _select_entries(questions: dict[str, Any], per_domain: int | None, limit: int | None, include_premise: bool) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for domain in questions.get("domains", {}).values():
+        entries.extend(domain[:per_domain] if per_domain else domain)
+    if limit:
+        entries = entries[:limit]
+    if include_premise:
+        entries.extend({**q, "is_premise": True} for q in questions.get("false_premise", []))
+    return entries
+
+
+async def main(
+    per_domain: int | None = None, limit: int | None = None, with_baseline: bool = True,
+    include_premise: bool = True, concurrency: int = 3, resume_path: Path | None = None,
+) -> None:
     settings = get_settings()
     repo = Repo(settings.database_url)
     repo.create_all()
     deps = build_deps(settings, repo)
 
-    print("Evaluating planted claims (Verifier only, no search provider needed)...")
-    planted_results = await evaluate_planted_claims(deps)
-    planted_metrics = compute_planted_claim_recall(planted_results)
-    print(f"Planted-claim recall: {planted_metrics}")
+    RESULTS_DIR.mkdir(exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out_path = resume_path or RESULTS_DIR / f"run_{timestamp}.json"
+    state: dict[str, Any] = {"timestamp": timestamp, "questions": [], "baseline": []}
+    if resume_path and resume_path.exists():
+        state = json.loads(resume_path.read_text(encoding="utf-8"))
+        print(f"Resuming {resume_path}: {len(state['questions'])} questions already done.")
 
-    print("Evaluating gold labels (independent grader vs. human — needs gold_labels.csv filled in)...")
-    gold_metrics = await evaluate_gold_labels(deps, repo)
-    if gold_metrics["n"] == 0:
-        print("  gold_labels.csv is empty — run eval/label.py against a real run first. Skipping.")
-    else:
-        print(f"  n={gold_metrics['n']} accuracy={gold_metrics['accuracy']} kappa={gold_metrics['kappa']} "
-              f"false_rejection_rate={gold_metrics['false_rejection_rate']}")
+    def save() -> None:
+        out_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+    if "planted_claim_recall" not in state:
+        print("Evaluating planted claims (Verifier only, no search provider needed)...")
+        planted_results = await evaluate_planted_claims(deps)
+        state["planted_claim_recall"] = compute_planted_claim_recall(planted_results)
+        state["planted_claim_details"] = planted_results
+        by_stage: dict[str, int] = {}
+        for r in planted_results:
+            if r["rejected"]:
+                key = r["stage_failed"] or r["outcome"]
+                by_stage[key] = by_stage.get(key, 0) + 1
+        state["planted_rejections_by_stage"] = by_stage
+        print(f"Planted-claim recall: {state['planted_claim_recall']} by stage: {by_stage}")
+        save()
+
+    if "gold_label_agreement" not in state:
+        print("Evaluating gold labels (independent grader vs. human)...")
+        state["gold_label_agreement"] = await evaluate_gold_labels(deps, repo)
+        if state["gold_label_agreement"]["n"] == 0:
+            print("  gold_labels.csv has no human-labeled rows — skipping (never fabricated).")
+        save()
 
     with open(QUESTIONS_PATH, "r", encoding="utf-8") as fh:
         questions = yaml.safe_load(fh)
-    all_entries = [q for domain in questions.get("domains", {}).values() for q in domain]
-    if limit:
-        all_entries = all_entries[:limit]
+    entries = _select_entries(questions, per_domain, limit, include_premise)
+    done_ids = {q["id"] for q in state["questions"]}
+    todo = [e for e in entries if e["id"] not in done_ids]
 
-    print(f"Running {len(all_entries)} questions through the full pipeline (spends real credits)...")
-    question_results = []
-    baseline_results = []
-    for entry in all_entries:
-        result = await evaluate_question(settings, repo, entry)
-        question_results.append(result)
-        print(f"  {entry['id']}: stop_reason={result['stop_reason']} cost=${result['cost_usd']}")
+    print(f"Running {len(todo)} questions through the full pipeline (spends real credits, concurrency={concurrency})...")
+    sem = asyncio.Semaphore(concurrency)
 
-        if with_baseline:
-            baseline_result = await evaluate_baseline_question(deps, entry)
-            baseline_results.append(baseline_result)
-            print(f"    baseline citation_precision={baseline_result['citation_precision']}")
+    async def one(entry: dict[str, Any]) -> None:
+        async with sem:
+            try:
+                result = await evaluate_question(settings, repo, entry, deps=deps)
+            except Exception as exc:  # a failed question is recorded, never silently dropped
+                result = {"id": entry["id"], "error": str(exc)[:300]}
+            result["is_premise"] = bool(entry.get("is_premise"))
+            state["questions"].append(result)
+            print(f"  {entry['id']}: {result.get('stop_reason', 'ERROR')} cost=${result.get('cost_usd')} "
+                  f"claims_passed={result.get('n_claims_passed')}/{result.get('n_claims')}")
+            if with_baseline and not entry.get("is_premise"):
+                try:
+                    base = await evaluate_baseline_question(deps, entry)
+                except Exception as exc:
+                    base = {"id": entry["id"], "error": str(exc)[:300]}
+                state["baseline"].append(base)
+                print(f"    baseline citation_precision={base.get('citation_precision')}")
+            save()
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    RESULTS_DIR.mkdir(exist_ok=True)
-    out_path = RESULTS_DIR / f"run_{timestamp}.json"
-    with open(out_path, "w", encoding="utf-8") as fh:
-        json.dump(
-            {
-                "timestamp": timestamp,
-                "planted_claim_recall": planted_metrics,
-                "planted_claim_details": planted_results,
-                "gold_label_agreement": gold_metrics,
-                "questions": question_results,
-                "baseline": baseline_results,
-            },
-            fh,
-            indent=2,
-        )
+    await asyncio.gather(*(one(e) for e in todo))
+    save()
     print(f"\nResults written to {out_path}")
 
 
 if __name__ == "__main__":
-    limit_arg = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1] != "--no-baseline" else None
-    asyncio.run(main(limit=limit_arg, with_baseline="--no-baseline" not in sys.argv))
+    ap = argparse.ArgumentParser(description="DeepDive self-evaluation (spends real Mesh/Firecrawl credits).")
+    ap.add_argument("limit", nargs="?", type=int, help="only the first N domain questions (legacy positional arg)")
+    ap.add_argument("--per-domain", type=int, help="first N questions from each of the 6 domains")
+    ap.add_argument("--no-baseline", action="store_true")
+    ap.add_argument("--no-premise", action="store_true", help="skip the 5 false-premise questions")
+    ap.add_argument("--concurrency", type=int, default=3)
+    ap.add_argument("--resume", type=Path, help="continue a partially-written results JSON")
+    args = ap.parse_args()
+    asyncio.run(
+        main(
+            per_domain=args.per_domain, limit=args.limit, with_baseline=not args.no_baseline,
+            include_premise=not args.no_premise, concurrency=args.concurrency, resume_path=args.resume,
+        )
+    )

@@ -134,3 +134,17 @@ These are decisions `BLUEPRINT.md` §18 flags as blocking and that this document
 ## Known risk accepted, not solved
 
 Even with the two-layer verification design, a sufficiently well-written adversarial source (e.g., a page crafted to pass span-matching while being subtly wrong) could still slip through. The injection-resistance and planted-claim-recall metrics in `eval/` are the system's own early-warning mechanism for this, not a guarantee against it — this is stated honestly rather than claimed as solved, consistent with the project's own grounding principle: don't assert what isn't verified.
+
+## 18. Audit round 2: five gaps found by reviewing the submission against the brief
+
+An external review of the repo against the hackathon brief found five things the docs claimed or implied that the code did not do. Each was fixed with a test, and the self-evaluation was actually run.
+
+1. **"Verifier and Auditor are always different models" was false under fallback.** `verifier.fallback` was `openai/gpt-4o`, which is the auditor's primary. In the first showcase EV run, 269 of 297 verifier calls ran on gpt-4o, the same model that audited the report. Fix: verifier, auditor and grader now share **no** model, primary or fallback (`llm/models.yaml`: haiku-4.5 → gemini-2.5-flash; gpt-4o → gemini-2.5-pro; sonnet-5 → sonnet-4.6), enforced by `tests/unit/test_model_roles.py`. The EV question was re-run on the corrected config as part of the eval (`fin-01`).
+2. **Self-evaluation was built but never run.** `eval/run_eval.py` now also measures the independent-grader support rate (a third model re-judges every cited final sentence against its stored passage), rubric coverage, abstention, claim pass rate, cost and latency, writes results incrementally, and is resumable. The numbers are in `EVAL.md`, quoted from `eval/results/*.json`.
+3. **Confidence scoring ignored two of its four documented inputs.** `corroborating_sources` was hard-coded to 1 and `time_scope` to `None`. Now `agents/verifier.py::_apply_corroboration` counts distinct *other* sources with a lexically near-identical passed claim (same `core/relevance.py` scorer, no LLM), and `verify/confidence.py` penalises sources more than a year older than the sub-question's `time_scope`.
+4. **The report had no "Gaps / Unverified" section.** `agents/synthesizer.py::build_gaps_sentences` appends, deterministically and without any LLM, a note for each thin sub-question and for each rejected/unverified claim with the stage that rejected it. These notes carry no `claim_ids` on purpose: a rejected claim's source does not support it, so citing it would be exactly the failure this system exists to prevent.
+5. **Each report sentence was stored twice** (once as a synthesizer draft, once after audit), so "failed audits" looked ~6× worse than reality (56 vs 9 on the EV run). The Auditor is now the only writer of `report_sentences`.
+
+Also removed: Firecrawl's `check_prompt_injection` flag (a third-party-side classifier; the brief says no third-party tool may make AI calls on our behalf), and the unused `demo_mode` setting.
+
+**Known limitation not fixed:** `Verdict.model` stores the *role* name (`"verifier"`), not the concrete model ID; the concrete model per call is in `llm_calls`. Judge–human agreement is still unmeasured because `eval/gold_labels.csv` needs human labels and we do not fabricate them.

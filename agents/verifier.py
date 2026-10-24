@@ -22,7 +22,7 @@ from app.deps import Deps
 from core.guardrails import wrap_untrusted
 from app.state import ClaimState, PassageState, SourceState, VerdictState
 from core.logging import get_logger
-from core.relevance import passes_prefilter
+from core.relevance import passes_prefilter, score as relevance_score
 from retrieval.dates import parse_published_date
 from verify.confidence import score_confidence
 from verify.numeric_check import numbers_consistent
@@ -61,12 +61,24 @@ def _make_verdict(
     )
 
 
-def _confidence_for(entailment: str, passage: PassageState, source_by_id: dict[str, SourceState]) -> tuple[str, float]:
+CORROBORATION_MIN_SIMILARITY = 0.5
+
+
+def _confidence_for(
+    entailment: str,
+    passage: PassageState,
+    source_by_id: dict[str, SourceState],
+    time_scope: str | None = None,
+    corroborating_sources: int = 1,
+) -> tuple[str, float]:
     source = source_by_id.get(passage["source_id"])
     tier = source.get("tier", 4) if source else 4
     raw_published = source.get("published_at") if source else None
     published_at = parse_published_date(raw_published) if raw_published else None
-    return score_confidence(entailment=entailment, tier=tier, corroborating_sources=1, published_at=published_at, time_scope=None)
+    return score_confidence(
+        entailment=entailment, tier=tier, corroborating_sources=corroborating_sources,
+        published_at=published_at, time_scope=time_scope,
+    )
 
 
 async def _judge(deps: Deps, run_id: str, claim_text: str, passage_text: str) -> SpanJudgment | None:
@@ -97,7 +109,9 @@ async def _verify_one(
     passage_by_id: dict[str, PassageState],
     passages_for_subq: list[PassageState],
     source_by_id: dict[str, SourceState],
+    time_scopes: dict[str, str | None],
 ) -> tuple[ClaimState, VerdictState]:
+    time_scope = time_scopes.get(claim["subq_id"])
     passage = passage_by_id.get(claim["passage_id"])
     if passage is None:
         verdict = _make_verdict(claim, "prefilter", "missing_passage", "unverified", None, None, "cited passage no longer exists", None, False)
@@ -120,7 +134,7 @@ async def _verify_one(
 
     if passed:
         outcome = "verified" if judgment.entailment == "supported" else "partial"
-        confidence = _confidence_for(judgment.entailment, passage, source_by_id)
+        confidence = _confidence_for(judgment.entailment, passage, source_by_id, time_scope)
         verdict = _make_verdict(claim, "confidence", None, outcome, judgment, passage["id"], judgment.reason, confidence, True)
         return {**claim, "status": outcome}, verdict
 
@@ -137,13 +151,52 @@ async def _verify_one(
             continue
         cand_span_ok, cand_numbers_ok = _passes_stage2_and_4(cand_judgment, candidate["text"], claim["text"])
         if cand_span_ok and cand_numbers_ok and cand_judgment.entailment in ("supported", "partial"):
-            confidence = _confidence_for(cand_judgment.entailment, candidate, source_by_id)
+            confidence = _confidence_for(cand_judgment.entailment, candidate, source_by_id, time_scope)
             verdict = _make_verdict(claim, "confidence", None, "re_cited", cand_judgment, candidate["id"], cand_judgment.reason, confidence, True)
             return {**claim, "status": "re_cited", "passage_id": candidate["id"]}, verdict
 
     final_outcome = "unverified" if judgment.entailment == "partial" else "rejected"
     verdict = _make_verdict(claim, "reattribution", stage_failed, final_outcome, judgment, passage["id"], judgment.reason, None, True)
     return {**claim, "status": final_outcome}, verdict
+
+
+def _apply_corroboration(
+    claims: list[ClaimState],
+    verdicts: list[VerdictState],
+    passage_by_id: dict[str, PassageState],
+    source_by_id: dict[str, SourceState],
+    time_scopes: dict[str, str | None],
+) -> None:
+    """BLUEPRINT.md §5 stage 6: confidence depends on how many INDEPENDENT
+    sources support the same fact. Runs after the whole batch is verified
+    (a claim's peers don't exist yet while it's being judged): for each
+    newly passed verdict, count distinct other sources, within the same
+    sub-question, that have a passed claim lexically near-identical to it
+    (core/relevance.py, same scorer as everywhere else — no LLM call),
+    then recompute its confidence. Mutates `verdicts` in place."""
+    claim_by_id = {c["id"]: c for c in claims}
+    passed = [c for c in claims if c["status"] in ("verified", "partial", "re_cited")]
+    for verdict in verdicts:
+        claim = claim_by_id.get(verdict["claim_id"])
+        passage = passage_by_id.get(verdict["passage_id"]) if verdict["passage_id"] else None
+        if claim is None or passage is None or verdict["confidence_score"] is None:
+            continue
+        own_source = passage["source_id"]
+        peer_sources: set[str] = set()
+        for other in passed:
+            if other["id"] == claim["id"] or other["subq_id"] != claim["subq_id"]:
+                continue
+            other_passage = passage_by_id.get(other["passage_id"])
+            if other_passage is None or other_passage["source_id"] == own_source:
+                continue
+            if relevance_score(claim["text"], other["text"]) >= CORROBORATION_MIN_SIMILARITY:
+                peer_sources.add(other_passage["source_id"])
+        if peer_sources:
+            level, numeric = _confidence_for(
+                verdict["entailment"] or "supported", passage, source_by_id,
+                time_scopes.get(claim["subq_id"]), corroborating_sources=1 + len(peer_sources),
+            )
+            verdict["confidence_level"], verdict["confidence_score"] = level, numeric
 
 
 async def verify_all(
@@ -153,7 +206,9 @@ async def verify_all(
     passages: list[PassageState],
     sources: list[SourceState],
     already_verified_ids: set[str],
+    time_scopes: dict[str, str | None] | None = None,
 ) -> tuple[list[ClaimState], list[VerdictState]]:
+    time_scopes = time_scopes or {}
     passage_by_id = {p["id"]: p for p in passages}
     source_by_id = {s["id"]: s for s in sources}
     passages_by_subq: dict[str, list[PassageState]] = {}
@@ -171,17 +226,19 @@ async def verify_all(
     # run), so this is where parallelizing matters most.
     results = await asyncio.gather(
         *(
-            _verify_one(deps, run_id, claim, passage_by_id, passages_by_subq.get(claim["subq_id"], []), source_by_id)
+            _verify_one(deps, run_id, claim, passage_by_id, passages_by_subq.get(claim["subq_id"], []), source_by_id, time_scopes)
             for claim in to_verify
         )
     )
     updated_claims: list[ClaimState] = [r[0] for r in results]
     verdicts: list[VerdictState] = [r[1] for r in results]
 
+    updated_by_id = {c["id"]: c for c in updated_claims}
+    merged = [updated_by_id.get(c["id"], c) for c in claims]
+    _apply_corroboration(merged, verdicts, passage_by_id, source_by_id, time_scopes)
+
     if verdicts:
         deps.repo.create_verdicts(verdicts)
         deps.repo.update_claim_statuses(updated_claims)
 
-    updated_by_id = {c["id"]: c for c in updated_claims}
-    merged = [updated_by_id.get(c["id"], c) for c in claims]
     return merged, verdicts

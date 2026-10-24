@@ -7,8 +7,12 @@
 # naming (claude-haiku-4.5, claude-sonnet-5, ...), not Anthropic's own
 # API's model ID scheme.
 #
-# Rule (DESIGN.md §4): verifier and auditor/grader MUST resolve to different
-# underlying models, so one model never grades its own reasoning style.
+# Rule (DESIGN.md §4): verifier, auditor and grader MUST NOT share ANY model
+# — primary OR fallback — so one model never grades its own reasoning style,
+# even when a circuit breaker flips a role onto its fallback. The first live
+# run broke this: verifier's fallback was gpt-4o (the auditor's primary), and
+# 269/297 verifier calls on the EV run actually ran on gpt-4o. Enforced by
+# tests/unit/test_model_roles.py.
 # verifier is the highest-volume role by far (297/422 calls in the first
 # live run) — routed to a cheaper-but-capable model for that reason.
 
@@ -21,16 +25,16 @@ roles:
     fallback: openai/gpt-4o
   verifier:
     model: anthropic/claude-haiku-4.5
-    fallback: openai/gpt-4o
+    fallback: google/gemini-2.5-flash
   auditor:
     model: openai/gpt-4o
-    fallback: anthropic/claude-haiku-4.5
+    fallback: google/gemini-2.5-pro
   synth:
     model: openai/gpt-4o
     fallback: openai/gpt-4o-mini
   grader:
     model: anthropic/claude-sonnet-5
-    fallback: openai/gpt-4o
+    fallback: anthropic/claude-sonnet-4.6
   coverage:
     model: openai/gpt-4o-mini
     fallback: openai/gpt-4o

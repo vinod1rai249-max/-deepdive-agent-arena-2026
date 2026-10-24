@@ -7,16 +7,65 @@ with no resolvable citation is dropped rather than rendered as fact.
 
 Produces DRAFT sentences only — persistence and audit_passed/audit_reason
 are owned by the Report Auditor (Phase 4), which runs next and is the
-single source of truth for what actually reaches the report."""
+single source of truth for what actually reaches the report. Also appends
+a deterministic "Gaps / Unverified" section (build_gaps_sentences)."""
 
 from __future__ import annotations
 
 from agents.schemas import SynthesizerOutput
 from app.deps import Deps
-from app.state import ClaimState, ContradictionState, ReportSentenceState, SubQuestionState
+from app.state import ClaimState, ContradictionState, ReportSentenceState, SubQuestionState, VerdictState
 from core.logging import get_logger
 
 logger = get_logger(__name__)
+
+GAPS_SECTION = "Gaps / Unverified"
+MAX_LISTED_UNVERIFIED = 10
+THIN_COVERAGE_THRESHOLD = 0.6  # same τ as agents/loop_control.py::COVERAGE_THRESHOLD
+
+
+def build_gaps_sentences(
+    sub_questions: list[SubQuestionState],
+    all_claims: list[ClaimState],
+    verdicts: list[VerdictState],
+    coverage: dict[str, float],
+    start_order: int,
+) -> list[ReportSentenceState]:
+    """BLUEPRINT.md §2.3/§4.1: "when evidence is thin, the report says so".
+    Deterministic — no LLM — so nothing here can be invented: every line
+    is assembled from stored claim text, stored verdict reasons, and
+    stored coverage numbers. Carries NO claim_ids on purpose: a rejected
+    claim's cited source does not support it, so attaching that source as
+    a citation would be exactly the failure this system exists to prevent.
+    The Auditor passes citation-less sentences through as gap notes."""
+    verdict_by_claim = {v["claim_id"]: v for v in verdicts}
+    subq_text = {sq["id"]: sq["text"] for sq in sub_questions}
+    sentences: list[ReportSentenceState] = []
+    order = start_order
+
+    def add(text: str) -> None:
+        nonlocal order
+        sentences.append(
+            ReportSentenceState(section=GAPS_SECTION, order=order, text=text, claim_ids=[], audit_passed=False, audit_reason=None)
+        )
+        order += 1
+
+    for sq in sub_questions:
+        cov = coverage.get(sq["id"])
+        if cov is not None and cov < THIN_COVERAGE_THRESHOLD:
+            add(f"Limited evidence for \"{sq['text']}\": only {cov:.0%} of its acceptance criteria were covered by verified claims.")
+
+    excluded = [c for c in all_claims if c["status"] in ("rejected", "unverified")]
+    for claim in excluded[:MAX_LISTED_UNVERIFIED]:
+        v = verdict_by_claim.get(claim["id"])
+        why = f"{v['stage_failed'] or v['outcome']}: {(v['reason'] or '').strip()[:200]}" if v else "no verdict recorded"
+        add(
+            f"Not verified, excluded from the findings above: \"{claim['text']}\" "
+            f"(sub-question: {subq_text.get(claim['subq_id'], 'unknown')}; {claim['status']} — {why})."
+        )
+    if len(excluded) > MAX_LISTED_UNVERIFIED:
+        add(f"{len(excluded) - MAX_LISTED_UNVERIFIED} further claims were also excluded; see the run trail for each one with its reason.")
+    return sentences
 
 
 async def synthesize(
@@ -25,6 +74,9 @@ async def synthesize(
     sub_questions: list[SubQuestionState],
     claims: list[ClaimState],
     contradictions: list[ContradictionState] | None = None,
+    all_claims: list[ClaimState] | None = None,
+    verdicts: list[VerdictState] | None = None,
+    coverage: dict[str, float] | None = None,
 ) -> list[ReportSentenceState]:
     contradictions = contradictions or []
     claim_by_id = {c["id"]: c for c in claims}
@@ -111,6 +163,11 @@ async def synthesize(
             )
             order += 1
 
-    if sentences:
-        deps.repo.create_report_sentences(run_id, sentences)
+    if all_claims is not None:
+        sentences.extend(build_gaps_sentences(sub_questions, all_claims, verdicts or [], coverage or {}, order))
+
+    # Draft sentences are NOT persisted here: the Report Auditor writes
+    # each sentence's final row exactly once, after its verdict. Persisting
+    # drafts too produced two rows per sentence (draft + audited) and made
+    # the trail's "failed audit" count look ~6x worse than reality.
     return sentences

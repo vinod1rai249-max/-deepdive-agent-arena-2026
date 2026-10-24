@@ -114,14 +114,15 @@ async def test_promoted_claim_reaches_the_report_after_resynthesis(tmp_path):
 
     result = await resynthesize_run(settings, repo, "run-1")
 
-    assert len(result["report_sentences"]) == 1
+    assert len([s for s in result["report_sentences"] if s["claim_ids"]]) == 1
     assert result["report_sentences"][0]["audit_passed"] is True
     assert "claim-rejected" in result["report_sentences"][0]["claim_ids"]
 
     # And it's actually persisted — a fresh read reflects the same thing.
     final_report = repo.get_report("run-1")
-    assert len(final_report) == 1
-    assert "finalized" in final_report[0]["text"]
+    cited = [s for s in final_report if s["citations"]]
+    assert len(cited) == 1
+    assert "finalized" in cited[0]["text"]
 
     # The override itself is on the record, separate from the AI's verdict.
     reviews = repo.get_human_reviews("run-1")
@@ -132,4 +133,6 @@ async def test_promoted_claim_reaches_the_report_after_resynthesis(tmp_path):
         claim = session.get(Claim, "claim-rejected")
         assert claim.status == "verified"
         # No duplicate rows from the clear-then-recreate in resynthesize_run.
-        assert session.query(ReportSentence).filter_by(run_id="run-1").count() == 1
+        # Exactly one row per final sentence (1 cited + 1 gap note): drafts
+        # are no longer persisted alongside their audited versions.
+        assert session.query(ReportSentence).filter_by(run_id="run-1").count() == len(result["report_sentences"]) == 2

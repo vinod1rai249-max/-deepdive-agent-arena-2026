@@ -1,0 +1,711 @@
+{
+  "runs": [
+    {
+      "run_id": "d5371083-3b81-4f0a-a2d4-923f3773aa4a",
+      "question": "What are the main risks of investing in the EV battery market in 2026?",
+      "stop_reason": "max_iter",
+      "n_claims": 153,
+      "n_claims_passed": 137,
+      "claim_pass_rate": 0.8954,
+      "independent_grade": {
+        "n_cited_sentences": 38,
+        "strict_support_rate": 0.6842,
+        "lenient_support_rate": 0.8947,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "unsupported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "unsupported",
+          "partial",
+          "partial",
+          "partial",
+          "supported",
+          "partial",
+          "supported",
+          "unsupported",
+          "supported",
+          "supported",
+          "supported",
+          "unsupported",
+          "supported",
+          "partial",
+          "supported",
+          "partial"
+        ]
+      },
+      "rubric_coverage": 0.75,
+      "verifier_models_used": [
+        "openai/gpt-4o"
+      ]
+    },
+    {
+      "run_id": "c4a3d3e2-6cfd-45cf-9488-bcef8fc4d0e3",
+      "question": "what is agentic rag",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 77,
+      "n_claims_passed": 76,
+      "claim_pass_rate": 0.987,
+      "independent_grade": {
+        "n_cited_sentences": 33,
+        "strict_support_rate": 0.9091,
+        "lenient_support_rate": 0.9697,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "unsupported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported"
+        ]
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5",
+        "openai/gpt-4o"
+      ]
+    },
+    {
+      "run_id": "8a79f942-11cf-4388-8754-4ac87ac36797",
+      "question": "what is agentic rag",
+      "stop_reason": "deadline",
+      "n_claims": 43,
+      "n_claims_passed": 43,
+      "claim_pass_rate": 1.0,
+      "independent_grade": {
+        "n_cited_sentences": 21,
+        "strict_support_rate": 0.9048,
+        "lenient_support_rate": 1.0,
+        "grader_errors": 0,
+        "labels": [
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported"
+        ]
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5",
+        "openai/gpt-4o"
+      ]
+    },
+    {
+      "run_id": "2d60589f-f963-41d5-a953-2fe6c7b8fb90",
+      "question": "what is the difference between encoder, decoder and encoder-decoder architecture",
+      "stop_reason": "max_iter",
+      "n_claims": 51,
+      "n_claims_passed": 48,
+      "claim_pass_rate": 0.9412,
+      "independent_grade": {
+        "n_cited_sentences": 16,
+        "strict_support_rate": 0.8125,
+        "lenient_support_rate": 1.0,
+        "grader_errors": 0,
+        "labels": [
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported"
+        ]
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "7d8bdd10-e812-4fad-ad81-e1c878428052",
+      "question": "what is the difference between generative and agentic ai",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 87,
+      "n_claims_passed": 84,
+      "claim_pass_rate": 0.9655,
+      "independent_grade": {
+        "n_cited_sentences": 27,
+        "strict_support_rate": 0.8889,
+        "lenient_support_rate": 1.0,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial"
+        ]
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "3581656c-46e7-44df-b5cb-fbcf6cfa714a",
+      "question": "Explain the Rag architecture in detail so that anybody can understand",
+      "stop_reason": "coverage_met",
+      "n_claims": 105,
+      "n_claims_passed": 101,
+      "claim_pass_rate": 0.9619,
+      "independent_grade": {
+        "n_cited_sentences": 24,
+        "strict_support_rate": 0.75,
+        "lenient_support_rate": 1.0,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "partial"
+        ]
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "27aba3b6-31e1-4cd3-a719-56c29c753248",
+      "question": "What are the main risks of investing in the EV battery market in 2026?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 53,
+      "n_claims_passed": 47,
+      "claim_pass_rate": 0.8868,
+      "independent_grade": {
+        "n_cited_sentences": 13,
+        "strict_support_rate": 0.6154,
+        "lenient_support_rate": 0.9231,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "unsupported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported"
+        ]
+      },
+      "rubric_coverage": 0.75,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "0b9d2704-b0ff-4b05-9a84-70828b66d4f2",
+      "question": "How has the Federal Reserve's interest rate policy changed since 2022?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 12,
+      "n_claims_passed": 12,
+      "claim_pass_rate": 1.0,
+      "independent_grade": {
+        "n_cited_sentences": 7,
+        "strict_support_rate": 0.8571,
+        "lenient_support_rate": 0.8571,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "supported",
+          "contradicted",
+          "supported",
+          "supported",
+          "supported",
+          "supported"
+        ]
+      },
+      "rubric_coverage": 0.3333,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "52960a2e-a295-4011-b6fc-37f17cf71958",
+      "question": "What do we currently know about the long-term effects of GLP-1 drugs like Ozempic?",
+      "stop_reason": "max_iter",
+      "n_claims": 37,
+      "n_claims_passed": 34,
+      "claim_pass_rate": 0.9189,
+      "independent_grade": {
+        "n_cited_sentences": 12,
+        "strict_support_rate": 0.9167,
+        "lenient_support_rate": 1.0,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported"
+        ]
+      },
+      "rubric_coverage": 1.0,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "8112d10e-401f-42de-b670-b537c098e723",
+      "question": "What is the current scientific consensus on the health effects of intermittent fasting?",
+      "stop_reason": "max_iter",
+      "n_claims": 48,
+      "n_claims_passed": 43,
+      "claim_pass_rate": 0.8958,
+      "independent_grade": {
+        "n_cited_sentences": 25,
+        "strict_support_rate": 0.8,
+        "lenient_support_rate": 1.0,
+        "grader_errors": 0,
+        "labels": [
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "partial",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "supported",
+          "partial"
+        ]
+      },
+      "rubric_coverage": 1.0,
+      "verifier_models_used": [
+        "anthropic/claude-haiku-4.5"
+      ]
+    },
+    {
+      "run_id": "112599b3-3a8e-478b-b1ec-57daf8628292",
+      "question": "What are the main technical approaches to AI model alignment being used today?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "b367ef15-e791-4992-87de-82a69f6f50ae",
+      "question": "How do current quantum computers compare to classical computers for practical problems?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "374e8632-2de6-4d3f-987d-1efc7fe463e0",
+      "question": "What is the current state of global solar panel manufacturing capacity and pricing?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "efce6f93-5f68-4c2a-b7ef-057b87a7a016",
+      "question": "What are the main barriers to widespread EV adoption in the United States?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "12e0cbc1-abdc-422d-a1bc-15d06597b004",
+      "question": "What are the main provisions of recent AI regulation efforts in the EU and US?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "98ba9c86-3516-49c6-ab83-61453971c847",
+      "question": "How have US immigration policies changed in the past several years?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "9138190f-d97e-49e8-93de-062dd52a3dac",
+      "question": "What were the main economic causes of the fall of the Soviet Union?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "ed8957d3-af90-4d12-b366-3922a2cb8a2e",
+      "question": "What factors led to the end of the Bretton Woods monetary system in 1971?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "8a7365e7-3deb-47e0-989b-1a86ba8d3cc5",
+      "question": "Since the US officially banned all gasoline-powered cars in 2024, how has the transition to EVs accelerated?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "74da1466-6a36-4cf0-ad37-e1864bd5acd6",
+      "question": "Given that the World Health Organization declared COVID-19 no longer a disease of concern in 2023, why do countries still track it?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "b44977af-b9c2-47f7-a6e4-7f191fca3b6a",
+      "question": "Why did the European Central Bank adopt the US dollar as its reference currency in 2025?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "060d8d65-812b-4b81-9ce9-14f5dd48d05d",
+      "question": "Since nuclear fusion power plants began supplying commercial electricity to the grid in 2024, how has the energy market responded?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "316d0eab-cf32-4e7f-8cbe-5a4d6f3d85d8",
+      "question": "Given that the Federal Reserve eliminated interest rates entirely in 2025, how are banks adjusting?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": null,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "8f9943e1-fa15-4a74-b72a-1b1048adb416",
+      "question": "What are the main risks of investing in the EV battery market in 2026?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "13e0070d-f4c5-4160-9dae-e4edc0e0649d",
+      "question": "How has the Federal Reserve's interest rate policy changed since 2022?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "2845b746-84b4-43a2-858b-c7f75e3270c2",
+      "question": "What do we currently know about the long-term effects of GLP-1 drugs like Ozempic?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    },
+    {
+      "run_id": "caad2518-87bd-464d-8269-cf83e6e42bbf",
+      "question": "What is the current scientific consensus on the health effects of intermittent fasting?",
+      "stop_reason": "no_new_evidence",
+      "n_claims": 0,
+      "n_claims_passed": 0,
+      "claim_pass_rate": null,
+      "independent_grade": {
+        "n_cited_sentences": 0,
+        "strict_support_rate": null,
+        "lenient_support_rate": null,
+        "grader_errors": 0,
+        "labels": []
+      },
+      "rubric_coverage": 0.0,
+      "verifier_models_used": []
+    }
+  ]
+}

@@ -153,6 +153,10 @@ async def test_thin_subquestion_triggers_real_re_research_then_succeeds(tmp_path
     assert statuses["The company expanded into new markets."] == "rejected"
     assert statuses["The EV battery market reached $50 billion in 2025."] == "verified"
 
-    # Only the verified claim reaches the final report.
-    assert len(result["report_sentences"]) == 1
-    assert result["report_sentences"][0]["claim_ids"]
+    # Only the verified claim is asserted as a cited finding; the rejected
+    # one appears only as an uncited note in "Gaps / Unverified".
+    cited = [s for s in result["report_sentences"] if s["claim_ids"]]
+    assert len(cited) == 1
+    gaps = [s for s in result["report_sentences"] if s["section"] == "Gaps / Unverified"]
+    assert any("The company expanded into new markets." in g["text"] for g in gaps)
+    assert not any("The company expanded into new markets." in s["text"] for s in cited)

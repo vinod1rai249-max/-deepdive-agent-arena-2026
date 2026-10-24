@@ -89,7 +89,8 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         bind(run_id=state["run_id"], node="verifier")
         already_verified_ids = {v["claim_id"] for v in state["verdicts"]}
         updated_claims, new_verdicts = await verifier.verify_all(
-            deps, state["run_id"], state["claims"], state["passages"], state["sources"], already_verified_ids
+            deps, state["run_id"], state["claims"], state["passages"], state["sources"], already_verified_ids,
+            time_scopes={sq["id"]: sq["time_scope"] for sq in state["sub_questions"]},
         )
         deps.repo.mark_run_node(state["run_id"], "verifier")
         return {"claims": updated_claims, "verdicts": state["verdicts"] + new_verdicts}
@@ -110,7 +111,8 @@ def build_graph(deps: Deps, checkpointer=None) -> CompiledStateGraph:
         bind(run_id=state["run_id"], node="synthesizer")
         verified_claims = [c for c in state["claims"] if c["status"] in VERIFIED_STATUSES]
         sentences = await synthesizer.synthesize(
-            deps, state["run_id"], state["sub_questions"], verified_claims, state["contradictions"]
+            deps, state["run_id"], state["sub_questions"], verified_claims, state["contradictions"],
+            all_claims=state["claims"], verdicts=state["verdicts"], coverage=state["coverage"],
         )
         deps.repo.mark_run_node(state["run_id"], "synthesizer")
         return {"report_sentences": sentences}

@@ -150,7 +150,11 @@ async def resynthesize_run(settings: Settings, repo: Repo, run_id: str) -> dict[
     repo.clear_contradictions(run_id)
     contradictions = await contradiction.check_all(deps, run_id, sub_questions, claims)
 
-    draft_sentences = await synthesizer.synthesize(deps, run_id, sub_questions, verified_claims, contradictions)
+    draft_sentences = await synthesizer.synthesize(
+        deps, run_id, sub_questions, verified_claims, contradictions,
+        all_claims=claims, verdicts=export["verdicts"],
+        coverage={sq["id"]: sq["coverage"] for sq in export["sub_questions"] if sq.get("coverage") is not None},
+    )
 
     repo.clear_report_sentences(run_id)
     final_sentences = await auditor.audit_all(deps, run_id, draft_sentences, claims, passages)
